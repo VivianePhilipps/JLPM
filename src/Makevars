@@ -1,0 +1,15 @@
+PKG_LIBS = $(BLAS_LIBS) $(FLIBS)
+
+CSRC = init.c
+FMODSRC = AOptim.f90
+FSRC =  irtsre.f90 compute.f90
+
+# Define order of compilation
+OBJECTS = $(CSRC:.c=.o) $(FMODSRC:.f90=.o) $(FSRC:.f90=.o) 
+
+$(SHLIB): $(OBJECTS)
+
+
+#Setup dependencies for parallel make
+irtsre.o: AOptim.o compute.o 
+
