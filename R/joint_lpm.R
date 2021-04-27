@@ -1,8 +1,123 @@
-#' Estimation of joint latent process models
-#'
-#' Description here
-#'
-#' #' @param fixed a two-sided linear formula object for specifying the
+#' Estimation of multivariate mixed-effect models and multivariate latent class
+#' mixed-effect models for multivariate longitudinal outcomes of possibly
+#' multiple types (continuous Gaussian, continuous non-Gaussian - curvilinear)
+#' that measure the same underlying latent process.
+#' 
+#' This function constitutes a multivariate extension of function \code{lcmm}.
+#' It fits multivariate mixed models and multivariate latent class mixed models
+#' for multivariate longitudinal outcomes of different types. It handles
+#' continuous longitudinal outcomes (Gaussian or non-Gaussian, curvilinear) as
+#' well as bounded quantitative and discrete longitudinal outcomes. Next
+#' version will also handle ordinal outcomes.  The model assumes that all the     #TS: fait non ?
+#' outcomes measure the same underlying latent process defined as their common
+#' factor, and each outcome is related to this latent common factor by a
+#' specific parameterized link function.  At the latent process level, the
+#' model estimates a standard linear mixed model or a latent class linear mixed
+#' model when heterogeneity in the population is investigated (in the same way
+#' as in function \code{hlme}). Parameters of the nonlinear link functions and
+#' of the latent process mixed model are estimated simultaneously using a
+#' maximum likelihood method.
+#' 
+#' 
+#' A. THE PARAMETERIZED LINK FUNCTIONS
+#' 
+#' \code{multlcmm} function estimates multivariate latent class mixed models       #TS: \code{irt} non ?
+#' for different types of outcomes by assuming a parameterized link function
+#' for linking each outcome Y_k(t) with the underlying latent common factor
+#' L(t) they measure. To fix the latent process dimension, we chose to
+#' constrain at the latent process level the (first) intercept of the latent
+#' class mixed model at 0 and the standard error of the first random effect at
+#' 1.
+#' 
+#' 1. With the "linear" link function, 2 parameters are required for the
+#' following transformation (Y(t) - b1)/b2
+#' 
+#' 2. With the "beta" link function, 4 parameters are required for the
+#' following transformation: [ h(Y(t)',b1,b2) - b3]/b4 where h is the Beta CDF
+#' with canonical parameters c1 and c2 that can be derived from b1 and b2 as
+#' c1=exp(b1)/[exp(b2)*(1+exp(b1))] and c2=1/[exp(b2)*(1+exp(b1))], and Y(t)'
+#' is the rescaled outcome i.e. Y(t)'= [ Y(t) - min(Y(t)) + epsY ] / [
+#' max(Y(t)) - min(Y(t)) +2*epsY ].
+#' 
+#' 3. With the "splines" link function, n+2 parameters are required for the
+#' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2} I_{n+1}(Y(t)),
+#' where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constraint the
+#' parameters to be positive, except for b_1, the program estimates b_k^* (for
+#' k=2,...,n+2) so that b_k=(b_k^*)^2. This parameterization may lead in some
+#' cases to problems of convergence that we are currently addressing.
+#' 
+#' Details of these parameterized link functions can be found in the papers:
+#' Proust-Lima et al. (Biometrics 2006) and Proust-Lima et al. (BJMSP 2013).
+#' 
+#' B. THE VECTOR OF PARAMETERS B
+#' 
+#' The parameters in the vector of initial values \code{B} or in the vector of
+#' maximum likelihood estimates \code{best} are included in the following
+#' order: (1) ng-1 parameters are required for intercepts in the latent class
+#' membership model, and if covariates are included in \code{classmb}, ng-1
+#' paramaters should be entered for each one; (2) for all covariates in
+#' \code{fixed}, one parameter is required if the covariate is not in
+#' \code{mixture}, ng paramaters are required if the covariate is also in
+#' \code{mixture}; When ng=1, the intercept is not estimated and no parameter
+#' should be specified in \code{B}. When ng>1, the first intercept is not
+#' estimated and only ng-1 parameters should be specified in \code{B}; (3) for
+#' all covariates included with \code{contrast()} in \code{fixed}, one
+#' supplementary parameter per outcome is required excepted for the last
+#' outcome for which the parameter is not estimated but deduced from the
+#' others; (4) if \code{idiag=TRUE}, the variance of each random-effect
+#' specified in \code{random} is required excepted the first one (usually the
+#' intercept) which is constrained to 1. (5) if \code{idiag=FALSE}, the
+#' inferior triangular variance-covariance matrix of all the random-effects is
+#' required excepted the first variance (usually the intercept) which is
+#' constrained to 1. (5) only if \code{nwg=TRUE} and \code{ng}>1, ng-1
+#' parameters for class-specific proportional coefficients for the variance
+#' covariance matrix of the random-effects; (6) if \code{cor} is specified, the
+#' standard error of the Brownian motion or the standard error and the
+#' correlation parameter of the autoregressive process; (7) the standard error
+#' of the outcome-specific Gaussian errors (one per outcome); (8) if
+#' \code{randomY=TRUE}, the standard error of the outcome-specific random
+#' intercept (one per outcome); (9) the parameters of each parameterized link
+#' function: 2 for "linear", 4 for "beta", n+2 for "splines" with n nodes.
+#' 
+#' C. CAUTIONS REGARDING THE USE OF THE PROGRAM
+#' 
+#' Some caution should be made when using the program. Convergence criteria are
+#' very strict as they are based on the derivatives of the log-likelihood in
+#' addition to the parameter and log-likelihood stability. In some cases, the
+#' program may not converge and reach the maximum number of iterations fixed at
+#' 100. In this case, the user should check that parameter estimates at the
+#' last iteration are not on the boundaries of the parameter space.
+#' 
+#' If the parameters are on the boundaries of the parameter space, the
+#' identifiability of the model is critical. This may happen especially with
+#' splines parameters that may be too close to 0 (lower boundary) or classmb
+#' parameters that are too high or low (perfect classification). When
+#' identifiability of some parameters is suspected, the program can be run
+#' again from the former estimates by fixing the suspected parameters to their
+#' value with option posfix. This usually solves the problem. An alternative is
+#' to remove the parameters of the Beta of Splines link function from the
+#' inverse of the Hessian with option partialH.
+#' 
+#' If not, the program should be run again with other initial values, with a
+#' higher maximum number of iterations or less strict convergence tolerances.
+#' 
+#' Specifically when investigating heterogeneity (that is with ng>1): (1) As
+#' the log-likelihood of a latent class model can have multiple maxima, a
+#' careful choice of the initial values is crucial for ensuring convergence
+#' toward the global maximum. The program can be run without entering the
+#' vector of initial values (see point 2). However, we recommend to
+#' systematically enter initial values in \code{B} and try different sets of
+#' initial values. (2) The automatic choice of initial values we provide
+#' requires the estimation of a preliminary linear mixed model. The user should
+#' be aware that first, this preliminary analysis can take time for large
+#' datatsets and second, that the generated initial values can be very not
+#' likely and even may converge slowly to a local maximum. This is the reason
+#' why several alternatives exist. The vector of initial values can be directly
+#' specified in \code{B} the initial values can be generated (automatically or
+#' randomly) from a model with \code{ng=}. Finally, function \code{gridsearch}
+#' performs an automatic grid search.
+#' 
+#' @param fixed a two-sided linear formula object for specifying the
 #' fixed-effects in the linear mixed model at the latent process level. The
 #' response outcomes are separated by \code{+} on the left of \code{~} and the
 #' covariates are separated by \code{+} on the right of the \code{~}. For
@@ -95,6 +210,9 @@
 #' are considered. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
 #' 'QMC' for quasi MonteCarlo.
 #' @param nMC integer, number of Monte Carlo simulations
+#' @param sharedtype indicator of shared random function type : 1 for gi(bi,t)=bi, 
+#' 2 for gi(bi,t)=predicted current level of latent process
+#' @param var.time name of the time variable 
 #' @return The list returned is: \item{ns}{number of grouping units in the
 #' dataset} \item{ng}{number of latent classes} \item{loglik}{log-likelihood of
 #' the model} \item{best}{vector of parameter estimates in the same order as
@@ -132,22 +250,31 @@
 #' functions} \item{data}{the original data set (if returndata is TRUE)}
 #' %% idea0,idprob0,idg0,idcontr0,idcor0,Xnames2,na.action,pred_RE_Y,Ynames,nbnodes
 #' @author Viviane Philipps and Cecile Proust-Lima
+#' @seealso
 #' 
+#' \code{\link{multlcmm}}, \code{\link{Jointlcmm}}
+#' 
+#' @references
+#' Proust-Lima, Amieva, Jacqmin-Gadda (2013). Analysis of multivariate mixed
+#' longitudinal data: A flexible latent process approach. Br J Math Stat
+#' Psychol 66(3): 470-87.
+#' @examples
+#'
 #' @export
-joint_lpm <-
-function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE,
-                survival=NULL,hazard="Weibull",hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0,
+#' 
+joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
+                survival=NULL,hazard="Weibull",hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
 {
     ptm <- proc.time()
-    if(verbose==TRUE) cat("Be patient, joint_lpm is running ... \n")
-
+    if(verbose==TRUE) cat("Be patient, irt is running ... \n")
+    
     cl <- match.call()
-
+    
     nom.subject <- as.character(subject)
-
+    
     if(missing(random)) stop("At least one random effect is required")
     if(random==~-1) stop("At least one random effect is required")
     if(missing(fixed)) stop("The argument fixed must be specified in any model")
@@ -159,10 +286,15 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     if(!is.numeric(data[,subject])) stop("The argument subject must be numeric")
     if(all(link %in% c("linear","beta","thresholds")) & !is.null(intnodes)) stop("Intnodes should only be specified with splines links")
     if(!(na.action%in%c(1,2)))stop("only 1 for 'na.omit' or 2 for 'na.fail' are required in na.action argument")
-
-#    if(length(posfix) & missing(B)) stop("A set of initial parameters must be specified if some parameters are not estimated")
-
-
+    if(!(sharedtype%in%c(1,2)))stop("The value of argument sharedtype must be 1 (bi) or 2 (latent process current level)") # TS
+    if(missing(var.time) | length(var.time)!=1)stop("The argument var.time is missing or is not of length 1")
+    if(!(var.time %in% colnames(data))) stop("Unable to find variable 'var.time' in 'data'")
+    if(sharedtype == 2 & missing(cor)==FALSE) print("wi not computed on current level prediction 'cause considered not shared")
+    if(sharedtype == 2 & missing(TimeDepVar)==FALSE) stop("model with current level shared effect and time dependent effect on survival not yet programmed")
+    
+    #    if(length(posfix) & missing(B)) stop("A set of initial parameters must be specified if some parameters are not estimated")
+    
+    
     ## garder data tel quel pour le renvoyer
     if(returndata==TRUE)
     {
@@ -179,81 +311,80 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     cor.time <- cl$cor[2]
     cor <- paste(cor.type,cor.time,sep="-")
     if (!isTRUE(all.equal(cor,character(0))))
-        {
-            if (substr(cor,1,2)=="AR") { ncor <- 2 }
-            else if (substr(cor,1,2)=="BM") { ncor <- 1  }
-            else { stop("The argument cor must be of type AR or BM") }
-
-            if(!(strsplit(cor,"-")[[1]][2] %in% colnames(data))) stop("Unable to find time variable from argument 'cor' in 'data'")
-            else { cor.var.time <- strsplit(cor,"-")[[1]][2] }
-        }
-
+    {
+        if (substr(cor,1,2)=="AR") { ncor <- 2 }
+        else if (substr(cor,1,2)=="BM") { ncor <- 1  }
+        else { stop("The argument cor must be of type AR or BM") }
+        
+        if(!(strsplit(cor,"-")[[1]][2] %in% colnames(data))) stop("Unable to find time variable from argument 'cor' in 'data'")
+        else { cor.var.time <- strsplit(cor,"-")[[1]][2] }
+    }
+    
     ##pour acces aux attributs des formules
     afixed <- terms(fixed, specials=c("factor","contrast"))
     if(attr(afixed,"intercept")==0) stop("An intercept should appear in fixed for identifiability purposes")
-                                        
+    
     arandom <- terms(random, specials=c("factor"))
     ##fixed sans contrast
     fixed2 <- gsub("contrast","",fixed)
     fixed2 <- formula(paste(fixed2[2],fixed2[3],sep="~"))   
     afixed2 <- terms(fixed2)
-                                        
+    
     ##verifier si toutes les varialbes sont dans data
     variables <- c(attr(afixed,"variables"),attr(arandom,"variables"))
     variables <- unlist(lapply(variables,all.vars))  
     if(!all(variables %in% colnames(data))) stop(paste("Data should contain the variables",paste(unique(variables),collapse=" ")))
-
-
+    
+    
     ##contrast
     contr <- ~-1
     if(!is.null(attr(afixed,"specials")$contrast))
-        {
-            vcontr <- attr(afixed,"term.labels")[setdiff(attr(afixed,"specials")$contrast-1,untangle.specials(afixed,"contrast",2)$terms)]
-            vcontr <- gsub("contrast","",vcontr)
-            contr <- as.formula(paste("~-1+",paste(vcontr,collapse="+")))
-        }
+    {
+        vcontr <- attr(afixed,"term.labels")[setdiff(attr(afixed,"specials")$contrast-1,untangle.specials(afixed,"contrast",2)$terms)]
+        vcontr <- gsub("contrast","",vcontr)
+        contr <- as.formula(paste("~-1+",paste(vcontr,collapse="+")))
+    }
     acontr <- terms(contr)
     
-
+    
     ##liste des outcomes
     nomsY <- as.character(attr(afixed,"variables")[2])
     nomsY <- strsplit(nomsY,split=" + ",fixed=TRUE)
     nomsY <- as.vector(nomsY[[1]])
     ny <- length(nomsY)
-
+    
     ##pas de contrast ni randomY si un seul Y
     if(ny<2 & length(attr(afixed,"specials")$contrast)) stop("No contrast can be included with less than two outcomes")
     if(ny<2 & randomY==TRUE) stop("With less than 2 outcomes randomY should be FALSE")
-
+    
     ##liste des variables utilisees  (sans les interactions et sans les Y)
     ttesLesVar <- colnames(get_all_vars(afixed,data=data[1,]))
     ttesLesVar <- c(ttesLesVar, colnames(get_all_vars(arandom,data=data[1,])))
     if (ncor>0) ttesLesVar <- unique(c(ttesLesVar,cor.var.time))
     else ttesLesVar <- unique(ttesLesVar)
     ttesLesVar <- setdiff(ttesLesVar, nomsY)
-
+    
     ## argument subset
     form1 <- paste(c(nom.subject,nomsY,ttesLesVar),collapse="+")
     if(!isTRUE(all.equal(as.character(cl$subset),character(0))))
-        {
-            cc <- cl
-            cc <- cc[c(1,which(names(cl)=="subset"))]
-            cc[[1]] <- as.name("model.frame")
-            cc$formula <- formula(paste("~",form1))
-            cc$data <- data
-            cc$na.action <- na.pass
-            data <- eval(cc)
-        }
-
+    {
+        cc <- cl
+        cc <- cc[c(1,which(names(cl)=="subset"))]
+        cc[[1]] <- as.name("model.frame")
+        cc$formula <- formula(paste("~",form1))
+        cc$data <- data
+        cc$na.action <- na.pass
+        data <- eval(cc)
+    }
+    
     attributes(data)$terms <- NULL
-
+    
     ## si subject est un factor
     if(is.factor(data[,nom.subject]))
-        {
-            data[,nom.subject] <- as.numeric(data[,nom.subject])
-        }
-
-
+    {
+        data[,nom.subject] <- as.numeric(data[,nom.subject])
+    }
+    
     ## partie survie
     if(is.null(survival))
     {
@@ -282,7 +413,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         if(length(surv)==3) #censure droite sans troncature gauche
         {
             idtrunc <- 0 
-
+            
             Tevent <- getElement(object=data,name=as.character(surv[2]))
             Event <- getElement(object=data,name=as.character(surv[3]))  
             Tentry <- rep(0,length(Tevent)) #si pas de troncature, Tentry=0
@@ -295,7 +426,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         if(length(surv)==4) #censure droite et troncature
         {
             idtrunc <- 1
-
+            
             Tentry <- getElement(object=data,name=as.character(surv[2]))
             Tevent <- getElement(object=data,name=as.character(surv[3]))
             Event <- getElement(object=data,name=as.character(surv[4]))  
@@ -324,7 +455,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         else
         {
             ##creer la formula pour cause
-            form1 <- gsub("mixture","",form.surv)
+            form1 <- gsub("mixture","",form.surv)       #TS: pas de classes latentes
             form1 <- formula(paste("~",form1))
             asurv1 <- terms(form1,specials="cause")  
             ind.cause <- attr(asurv1,"specials")$cause
@@ -338,7 +469,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
             {
                 form.cause <- ~-1 
             }
-                        
+            
             
             ## creer la formule pour ni cause ni mixture
             asurv <- terms(formula(paste("~",form.surv)),specials=c("cause"))
@@ -355,7 +486,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
             }
         }
     }
-
+    
     nom.timedepvar <- NULL
     if(!missing(TimeDepVar))
     {
@@ -365,8 +496,8 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
             if(!isTRUE(nom.timedepvar %in% colnames(data))) stop(paste("Data should contain variable",nom.timedepvar))
         }
     }
-
-        
+    
+    
     ##verifier si toutes les variables sont dans data
     varSurv <- unique(all.vars(terms(survival)))
     if(!is.null(nom.timedepvar)){if(!(nom.timedepvar %in% all.vars(terms(survival)))) stop("Variable in 'TimeDepVar' should also appear as a covariate in the 'survival' argument")}  
@@ -376,8 +507,8 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     
     ##subset de data avec les variables utilisees
     newdata <- data[,c(nom.subject,nomsY,noms.surv,ttesLesVar),drop=FALSE]
-
-
+    
+    
     ## remplacer les NA de TimeDepVar par Tevent
     Tint <- Tevent
     nvdepsurv <- 0  
@@ -390,7 +521,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         nvdepsurv <- 1
         if (length(Tint[Tint<Tevent])==0)
         {
-            stop("TimeDepVar is always greater than Time of Event. \n")
+            stop("TimeDepVar is always greater than Time of Event. \n")  
             nvdepsurv <- 0
         }
         if (length(Tint[Tint>Tentry])==0)
@@ -402,15 +533,13 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         
         newdata[,nom.timedepvar] <- Tint 
     }
-
+    
     dataSurv <- NULL
     if((nbevt>0))
     {
         dataSurv <- data.frame(getElement(object=data,name=nom.subject),Tentry,Tevent,Event,Tint)
     }
     
-
-
     
     ##un data frame par outcome et creation Y0
     dataY <- paste("data",nomsY,sep=".")
@@ -434,7 +563,6 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         outcome <- c(outcome,rep(nomsY[k],nrow(dtemp)))
         data0 <- rbind(data0, dtemp[,setdiff(colnames(dtemp),nomsY[k]),drop=FALSE])   #dataset sans NA avec les covariables utilisees; obs ordonnees par outcome
     }
-
     
     ##creation de X0 (ttes les var + interactions)
     Xfixed <- model.matrix(fixed2[-2], data=data0)
@@ -446,20 +574,20 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     
     z.fixed <- strsplit(colnames(Xfixed),split=":",fixed=TRUE)
     z.fixed <- lapply(z.fixed,sort)
-
+    
     z.random <- strsplit(colnames(Xrandom),split=":",fixed=TRUE)
     z.random <- lapply(z.random,sort)
-        
+    
     if(contr != ~-1)
-        {
-            z.contr <- strsplit(colnames(Xcontr),split=":",fixed=TRUE)
-            z.contr <- lapply(z.contr,sort)
-        }
+    {
+        z.contr <- strsplit(colnames(Xcontr),split=":",fixed=TRUE)
+        z.contr <- lapply(z.contr,sort)
+    }
     else
-        {
-            z.contr <- list()
-        }
-
+    {
+        z.contr <- list()
+    }
+    
     if(form.commun != ~-1)
     {
         z.surv <- strsplit(colnames(Xsurv),split=":",fixed=TRUE)
@@ -469,7 +597,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     {
         z.surv <- list() 
     }
-
+    
     if(form.cause != ~-1)
     {
         z.survcause <- strsplit(colnames(Xsurvcause),split=":",fixed=TRUE)
@@ -487,162 +615,163 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     
     nom.unique <- unique(colnames(X0))
     X0 <- X0[,nom.unique,drop=FALSE]
-
+    
     form.cor <- ~-1
     if (ncor>0)
+    {
+        if(!(cor.var.time %in% colnames(X0)))
         {
-            if(!(cor.var.time %in% colnames(X0)))
-                {
-                    X0 <- cbind(X0, data0[,cor.var.time])
-                    colnames(X0) <- c(nom.unique, cor.var.time)
-                    nom.unique <- c(nom.unique,cor.var.time)
-                    form.cor <- formula(paste("~-1+",cor.var.time))
-                }
+            X0 <- cbind(X0, data0[,cor.var.time])
+            colnames(X0) <- c(nom.unique, cor.var.time)
+            nom.unique <- c(nom.unique,cor.var.time)
+            form.cor <- formula(paste("~-1+",cor.var.time))
         }
-
+    }
+    
     X0 <- as.matrix(X0)
     ##X0 fini
-
-
+    
+    
+    
     ##test de link
     if (length(link)!=1 & length(link)!=ny) stop("One link per outcome should be specified")
     if(any(link %in% c("splines","Splines")))
-        {
-            link[which(link %in% c("splines","Splines"))] <- "5-quant-splines"
-        }
+    {
+        link[which(link %in% c("splines","Splines"))] <- "5-quant-splines"
+    }
     if(length(link)==1 & ny>1)
-        {
-            link <- rep(link, ny)
-        }
-
+    {
+        link <- rep(link, ny)
+    }
+    
     idlink <- rep(2,ny)
     idlink[which(link=="linear")] <- 0
     idlink[which(link=="beta")] <- 1
     idlink[which(link=="thresholds")] <- 3
-
+    
     spl <- strsplit(link[which(idlink==2)],"-")
     if(any(sapply(spl,length)!=3)) stop("Invalid argument 'link'")
-
+    
     nySPL <- length(spl)
     nybeta <- sum(idlink==1)
     nyORD <- sum(idlink==3)
     ##remplir range si pas specifie
     if(!is.null(range) & length(range)!=2*(nySPL+nybeta)) stop("Length of vector range is not correct.")
     if((length(range)==2*(nySPL+nybeta)) & (nySPL+nybeta>0))
+    {
+        ind12 <- which(idlink==1 | idlink==2)
+        for (i in 1:(nySPL+nybeta))
         {
-            ind12 <- which(idlink==1 | idlink==2)
-            for (i in 1:(nySPL+nybeta))
-                {
-                    rg <- range(get(dataY[ind12[i]])[,nomsY[ind12[i]]])
-                    if(rg[1]<range[2*(i-1)+1] | rg[2]>range[2*(i-1)+2]) stop("The range specified do not cover the entire range of the data")
-                }
+            rg <- range(get(dataY[ind12[i]])[,nomsY[ind12[i]]])
+            if(rg[1]<range[2*(i-1)+1] | rg[2]>range[2*(i-1)+2]) stop("The range specified do not cover the entire range of the data")
         }
+    }
     if((is.null(range) & (nybeta+nySPL)>0) | length(range)!=2*(nySPL+nybeta))
+    {
+        range <- NULL
+        for(k in which(idlink!=0))
         {
-            range <- NULL
-            for(k in which(idlink!=0))
-                {
-                    min1 <- min(get(dataY[k])[,nomsY[k]])
-                    min2 <- round(min1,3)
-                    if(min1<min2) min2 <- min2-0.001
-
-                    max1 <- max(get(dataY[k])[,nomsY[k]])
-                    max2 <- round(max1,3)
-                    if(max1>max2) max2 <- max2+0.001
-                    
-                    range <- c(range, min2, max2)
-                }
+            min1 <- min(get(dataY[k])[,nomsY[k]])
+            min2 <- round(min1,3)
+            if(min1<min2) min2 <- min2-0.001
+            
+            max1 <- max(get(dataY[k])[,nomsY[k]])
+            max2 <- round(max1,3)
+            if(max1>max2) max2 <- max2+0.001
+            
+            range <- c(range, min2, max2)
         }
-
-
+    }
+    
+    
     ## epsY
     if (any(idlink==1))
+    {
+        if (any(epsY<=0))
         {
-            if (any(epsY<=0))
-                {
-                    stop("Argument 'epsY' should be positive.")
-                }
-
-            if(length(epsY)==1) epsY <- rep(epsY,nybeta)
-            
-            if(length(epsY)!=nybeta) stop(paste("Argument 'epsY' should be of length",nybeta))
-            if(nybeta!=ny)
-                {
-                    epsY2 <- rep(0,ny)
-                    epsY2[which(idlink==1)] <- epsY
-                    epsY <- epsY2
-                }
-
-        } 
+            stop("Argument 'epsY' should be positive.")
+        }
+        
+        if(length(epsY)==1) epsY <- rep(epsY,nybeta)
+        
+        if(length(epsY)!=nybeta) stop(paste("Argument 'epsY' should be of length",nybeta))
+        if(nybeta!=ny)
+        {
+            epsY2 <- rep(0,ny)
+            epsY2[which(idlink==1)] <- epsY
+            epsY <- epsY2
+        }
+        
+    }
     
-
+    
     nbzitr <- rep(2,ny) #nbzitr = nb de noeuds si splines, 2 sinon
     nbnodes <- NULL  #que pour les splines
     spltype <- NULL
     if(nySPL>0)
+    {
+        for (i in 1:nySPL)
         {
-            for (i in 1:nySPL)
-                {
-                    nbnodes <- c(nbnodes, spl[[i]][1])
-                    spltype <- c(spltype, spl[[i]][2])
-                    if(spl[[i]][3] != "splines") stop("Invalid argument link")
-                }
+            nbnodes <- c(nbnodes, spl[[i]][1])
+            spltype <- c(spltype, spl[[i]][2])
+            if(spl[[i]][3] != "splines") stop("Invalid argument link")
         }
+    }
     nbnodes <- as.numeric(nbnodes)
     nbzitr[which(idlink==2)] <- nbnodes
-
+    
     ##test splines
     if(!(all(spltype %in% c("equi","quant","manual")))) stop("The location of the nodes should be 'equi', 'quant' or 'manual'")
-
+    
     ##tester longueur de intnodes
     if(!is.null(intnodes))
-        {  
-            if(length(intnodes) != sum(nbnodes[which(spltype=="manual")]-2)) stop(paste("Vector intnodes should be of length",sum(nbnodes[which(spltype=="manual")]-2)))
-        }
-
+    {
+        if(length(intnodes) != sum(nbnodes[which(spltype=="manual")]-2)) stop(paste("Vector intnodes should be of length",sum(nbnodes[which(spltype=="manual")]-2)))
+    }
+    
     ##intnodes2 : contient tous les noeuds interieurs (pas seulement ceux de manual)
     intnodes2 <- rep(NA,sum(nbnodes-2))
     nb <- 0
     nbspl <- 0
     for (k in 1:ny)
+    {
+        if (idlink[k]!=2) next
+        else
         {
-            if (idlink[k]!=2) next
-            else
-                {                                         
-                    nbspl <- nbspl+1
-
-                    if(spltype[nbspl]=="manual")
-                        {
-                            nodes <- intnodes[(nb+1):(nb+nbnodes[nbspl]-2)]
-                            if(!length(nodes)) stop("The length of intnodes is not correct")
-                            intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <-  nodes
-                            nb <- nb+nbnodes[nbspl]-2
-
-                            idrg <- length(which(idlink[1:k] != 0))
-                            if(any(nodes <= range[2*(idrg-1)+1]) | any(nodes >= range[2*idrg])) stop("Interior nodes must be in the range of the outcome")
-                        }
-
-                    if(spltype[nbspl]=="equi")
-                        {
-                            nodes <- seq(range[2*(nbspl-1)+1], range[2*nbspl], length.out=nbnodes[nbspl])
-                            nodes <- nodes[-nbnodes[nbspl]]
-                            nodes <- nodes[-1]
-                            intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <- nodes
-                        }
-
-                    if(spltype[nbspl]=="quant")
-                        {
-                            nodes <- quantile(get(dataY[k])[,nomsY[k]], probs=seq(0,1,length.out=nbnodes[nbspl]))
-                            if(length(unique(nodes)) != length(nodes)) stop(paste("Some nodes are equal for link number",k,"; Please try to reduce the number of nodes or use manual location."))
-                            nodes <- nodes[-nbnodes[nbspl]]
-                            nodes <- nodes[-1]
-                            intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <- as.vector(nodes)
-                        }
-                }
+            nbspl <- nbspl+1
+            
+            if(spltype[nbspl]=="manual")
+            {
+                nodes <- intnodes[(nb+1):(nb+nbnodes[nbspl]-2)]
+                if(!length(nodes)) stop("The length of intnodes is not correct")
+                intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <-  nodes
+                nb <- nb+nbnodes[nbspl]-2
+                
+                idrg <- length(which(idlink[1:k] != 0))
+                if(any(nodes <= range[2*(idrg-1)+1]) | any(nodes >= range[2*idrg])) stop("Interior nodes must be in the range of the outcome")
+            }
+            
+            if(spltype[nbspl]=="equi")
+            {
+                nodes <- seq(range[2*(nbspl-1)+1], range[2*nbspl], length.out=nbnodes[nbspl])
+                nodes <- nodes[-nbnodes[nbspl]]
+                nodes <- nodes[-1]
+                intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <- nodes
+            }
+            
+            if(spltype[nbspl]=="quant")
+            {
+                nodes <- quantile(get(dataY[k])[,nomsY[k]], probs=seq(0,1,length.out=nbnodes[nbspl]))
+                if(length(unique(nodes)) != length(nodes)) stop(paste("Some nodes are equal for link number",k,"; Please try to reduce the number of nodes or use manual location."))
+                nodes <- nodes[-nbnodes[nbspl]]
+                nodes <- nodes[-1]
+                intnodes2[(sum(nbnodes[1:nbspl]-2)-(nbnodes[nbspl]-2)+1):sum(nbnodes[1:nbspl]-2)] <- as.vector(nodes)
+            }
         }
-
+    }
+    
     if(nb != length(intnodes)) stop(paste("The vector intnodes should be of length",nb))
-
+    
     ##remplir zitr
     m <- 0
     if(nySPL>0) m <- max(nbnodes)
@@ -650,29 +779,29 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     nb12 <- 0
     nbspl <- 0
     for (k in 1:ny)
+    {
+        if((idlink[k]==0) | (idlink[k]==3)) zitr[1:2,k] <- c(min(get(dataY[k])[,nomsY[k]]),max(get(dataY[k])[,nomsY[k]]))
+        
+        if(idlink[k]==1)
         {
-            if((idlink[k]==0) | (idlink[k]==3)) zitr[1:2,k] <- c(min(get(dataY[k])[,nomsY[k]]),max(get(dataY[k])[,nomsY[k]]))
-
-            if(idlink[k]==1)
-                {
-                    nb12 <- nb12 + 1
-                    zitr[1:2,k] <- range[2*(nb12-1)+1:2]
-                }
-
-            if(idlink[k]==2)
-                {
-                    nb12 <- nb12+1
-                    nbspl <- nbspl+1
-                    zitr[2:(nbzitr[k]-1),k] <- intnodes2[ifelse(nbspl==1,0,1)*sum(nbnodes[1:(nbspl-1)]-2) + 1:(nbnodes[nbspl]-2)]
-                    zitr[1,k] <- range[2*(nb12-1)+1]
-                    zitr[nbnodes[nbspl],k]  <- range[2*nb12]
-                    
-                    ##verifier s'il y a des obs entre les noeuds
-                    hcounts <- hist(get(dataY[k])[,nomsY[k]],breaks=zitr[1:nbnodes[nbspl],k],plot=FALSE,include.lowest=TRUE,right=TRUE)$counts
-                    if(any(hcounts==0)) stop(paste("Link function number",k,"can not be estimated. Please try other nodes such that there are observations in each interval."))    
-                }
+            nb12 <- nb12 + 1
+            zitr[1:2,k] <- range[2*(nb12-1)+1:2]
         }
-
+        
+        if(idlink[k]==2)
+        {
+            nb12 <- nb12+1
+            nbspl <- nbspl+1
+            zitr[2:(nbzitr[k]-1),k] <- intnodes2[ifelse(nbspl==1,0,1)*sum(nbnodes[1:(nbspl-1)]-2) + 1:(nbnodes[nbspl]-2)]
+            zitr[1,k] <- range[2*(nb12-1)+1]
+            zitr[nbnodes[nbspl],k]  <- range[2*nb12]
+            
+            ##verifier s'il y a des obs entre les noeuds
+            hcounts <- hist(get(dataY[k])[,nomsY[k]],breaks=zitr[1:nbnodes[nbspl],k],plot=FALSE,include.lowest=TRUE,right=TRUE)$counts
+            if(any(hcounts==0)) stop(paste("Link function number",k,"can not be estimated. Please try other nodes such that there are observations in each interval."))
+        }
+    }
+    
     ##uniqueY0 et indiceY0
     uniqueY0 <- NULL
     indiceY0 <- NULL
@@ -681,49 +810,49 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     modalites <- vector("list",ny)
     nb <- 0
     for (k in 1:ny)
+    {
+        if((idlink[k]!=2) & (idlink[k]!=3))
         {
-            if((idlink[k]!=2) & (idlink[k]!=3))
-                {
-                    indiceY0 <- c(indiceY0, rep(0,length(get(dataY[k])[,nomsY[k]])))
-                    next
-                }
-
-            yk <- get(dataY[k])[,nomsY[k]]
-            uniqueTemp <- sort(unique(yk))
-            permut <- order(order(yk))  # sort(y)[order(order(y))] = y
-            if(length(as.vector(table(yk)))==length(uniqueTemp))
-                {
-                    indice <- rep(1:length(uniqueTemp), as.vector(table(yk)))
-                    if(idlink[k]==2)
-                    {
-                        indiceTemp <- nb + indice[permut]
-                    }
-                    else
-                    {
-                        indiceTemp <- indice[permut]
-                    }
-                    
-                    nb <- nb + length(uniqueTemp)
-
-                    uniqueY0 <- c(uniqueY0, uniqueTemp)
-                    indiceY0 <- c(indiceY0, indiceTemp)
-                    nvalSPLORD[k] <- length(uniqueTemp)
-                }
-            else
-                {
-                    uniqueY0 <- c(uniqueY0, yk)
-                    indiceY0 <- c(indiceY0, ifelse(idlink[k]==2,nb,0)+c(1:length(yk)))
-                    nb <- nb + length(yk)
-                    nvalSPLORD[k] <- length(yk)
-                }
-            if(idlink[k]==3)
-            {
-                nbmod[k] <- length(na.omit(uniqueTemp))
-                modalites[[k]] <- uniqueTemp
-            }
+            indiceY0 <- c(indiceY0, rep(0,length(get(dataY[k])[,nomsY[k]])))
+            next
         }
-
-
+        
+        yk <- get(dataY[k])[,nomsY[k]]
+        uniqueTemp <- sort(unique(yk))
+        permut <- order(order(yk))  # sort(y)[order(order(y))] = y
+        if(length(as.vector(table(yk)))==length(uniqueTemp))
+        {
+            indice <- rep(1:length(uniqueTemp), as.vector(table(yk)))
+            if(idlink[k]==2)
+            {
+                indiceTemp <- nb + indice[permut]
+            }
+            else
+            {
+                indiceTemp <- indice[permut]
+            }
+            
+            nb <- nb + length(uniqueTemp)
+            
+            uniqueY0 <- c(uniqueY0, uniqueTemp)
+            indiceY0 <- c(indiceY0, indiceTemp)
+            nvalSPLORD[k] <- length(uniqueTemp)
+        }
+        else
+        {
+            uniqueY0 <- c(uniqueY0, yk)
+            indiceY0 <- c(indiceY0, ifelse(idlink[k]==2,nb,0)+c(1:length(yk)))
+            nb <- nb + length(yk)
+            nvalSPLORD[k] <- length(yk)
+        }
+        if(idlink[k]==3)
+        {
+            nbmod[k] <- length(na.omit(uniqueTemp))
+            modalites[[k]] <- uniqueTemp
+        }
+    }
+    
+    
     ##ordonner les mesures par individu
     matYX <- cbind(IND,Y0,indiceY0,outcome,X0)
     matYXord <- matYX[order(IND),]
@@ -732,36 +861,37 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     IND <- matYXord[,1]
     outcome <- matYXord[,4]
     indiceY0 <- as.numeric(matYXord[,3])
-
+    
     dataSurv <- dataSurv[which(dataSurv[,1] %in% IND),]
     dataSurv <- dataSurv[order(dataSurv[,1]),]
     nmes <- as.vector(table(dataSurv[,1]))
     data.surv <- apply(dataSurv[cumsum(nmes),-1],2,as.numeric)
-    tsurv0 <- data.surv[,1] 
+    tsurv0 <- data.surv[,1]
     tsurv <- data.surv[,2]
     devt <- data.surv[,3]
     tsurvint <- data.surv[,4]
-    ind_survint <- (tsurvint<tsurv) + 0 
-
+    ind_survint <- (tsurvint<tsurv) + 0
+    
     ## test de hazard
     arghaz <- hazard
     hazard <- rep(hazard,length.out=nbevt)
     if(any(hazard %in% c("splines","Splines")))
     {
-        hazard[which(hazard %in% c("splines","Splines"))] <- "5-quant-splines" 
+        hazard[which(hazard %in% c("splines","Splines"))] <- "5-quant-splines"
+        if(sharedtype == 2) stop("option hazard=splines & sharedtype=2 not programmed yet")
     }
     if(any(hazard %in% c("piecewise","Piecewise")))
     {
-        hazard[which(hazard %in% c("piecewise","Piecewise"))] <- "5-quant-piecewise" 
+        hazard[which(hazard %in% c("piecewise","Piecewise"))] <- "5-quant-piecewise"
     }
     
     haz13 <- strsplit(hazard[which(!(hazard=="Weibull"))],"-")
     if(any(sapply(haz13,length)!=3)) stop("Invalid argument hazard")
-        
-    nz <- rep(2,nbevt) 
-    locnodes <- NULL  
-    typrisq <- rep(2,nbevt)   
-    nprisq <- rep(2,nbevt) 
+    
+    nz <- rep(2,nbevt)
+    locnodes <- NULL
+    typrisq <- rep(2,nbevt)
+    nprisq <- rep(2,nbevt)
     
     nznodes <- 0 #longueur de hazardnodes
     ii <- 0
@@ -775,9 +905,9 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
             ii <- ii+1
             
             nz[i] <- as.numeric(haz13[[ii]][1])
-            if(nz[i]<3) stop("At least 3 nodes are required")  
+            if(nz[i]<3) stop("At least 3 nodes are required")
             typrisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),3,1)
-            nprisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),nz[i]+2,nz[i]-1)  
+            nprisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),nz[i]+2,nz[i]-1)
             locnodes <- c(locnodes, haz13[[ii]][2])
             if(!(haz13[[ii]][3] %in% c("splines","Splines","piecewise","Piecewise"))) stop("Invalid argument hazard")
             
@@ -786,15 +916,15 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                 nznodes <- nznodes + nz[i]-2
             }
             
-            if(!all(locnodes %in% c("equi","quant","manual"))) stop("The location of the nodes should be 'equi', 'quant' or 'manual'")      
+            if(!all(locnodes %in% c("equi","quant","manual"))) stop("The location of the nodes should be 'equi', 'quant' or 'manual'")
         }
         
         if(!is.null(hazardnodes))
         {
             if(!any(locnodes == "manual"))  stop("hazardnodes should be NULL if the nodes are not chosen manually")
             
-            if(length(hazardnodes) != nznodes) stop(paste("Vector hazardnodes should be of length",nznodes)) 
-        }  
+            if(length(hazardnodes) != nznodes) stop(paste("Vector hazardnodes should be of length",nznodes))
+        }
     }
     else
     {
@@ -806,11 +936,11 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     {
         hazardnodes <- rep(hazardnodes,length.out=nznodes*nbevt)
     }
-
+    
     nrisqtot <- sum(nprisq)
     
     zi <- matrix(0,nrow=max(nz),ncol=nbevt)
-    nb <- 0   
+    nb <- 0
     
     minT1 <- 0
     maxT1 <- max(tsurv)
@@ -833,7 +963,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     
     startWeib <- rep(0,nbevt)
     startWeib[which(typrisq==2)] <- rep(startWeibull, length.out=length(which(typrisq==2)))
-    ii <- 0  
+    ii <- 0
     for(i in 1:nbevt)
     {
         if(typrisq[i]==2)
@@ -845,14 +975,14 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         {
             ii <- ii+1
             
-            if(locnodes[ii]=="manual") 
+            if(locnodes[ii]=="manual")
             {
                 zi[1:nz[i],i] <- c(minT,hazardnodes[nb+1:(nz[i]-2)],maxT)
-                nb <- nb + nz[i]-2 
-            } 
+                nb <- nb + nz[i]-2
+            }
             if(locnodes[ii]=="equi")
             {
-                zi[1:nz[i],i] <- seq(minT,maxT,length.out=nz[i]) 
+                zi[1:nz[i],i] <- seq(minT,maxT,length.out=nz[i])
             }
             if(locnodes[ii]=="quant")
             {
@@ -862,11 +992,121 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                 zi[2:(nz[i]-1),i] <- qi
                 zi[nz[i],i] <- maxT
             }
-        }   
+        }
     }
-
+    
+    
+    #print("code ajoute")
+    
+    ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
+    if(sharedtype == 1){  #gi(bi,t)=bi
+        Xpred <- 0 #NULL
+        Xpred_Ti <- 0 #NULL
+        nbXpred <- 0 #NULL
+    }
+    if(sharedtype == 2){   #gi(bi,t)=niv.courant(t)
         
-
+        # si varexp dependante du tps (autre que var.time), prediction impossible
+        nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
+        nom.var <- nom.var[!str_detect(nom.var,var.time)]  # noms des variables, autre que celle incluant var.time
+        if(length(nom.var)>0){
+            for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
+                tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
+                if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
+                    stop(paste(nom.var[v]," seems to be time dependant, can't use sharedtype=2 in this case 'cause impossible to predict"))
+            }  
+        }
+        
+        ## matrices design
+        
+        # database contenant les variables des EFs et des EAs, 1 ligne par sujet
+        data_tmp <- as.data.frame(unique(na.omit(data[,c(subject,nom.var)])))
+        colnames(data_tmp) <- c(subject,nom.var)
+        data_tmp$tmp_name <- NA
+        colnames(data_tmp)[which(colnames(data_tmp) == "tmp_name")] <- var.time
+        if(nrow(data_tmp)!=length(unique(IND))) stop("Make sure at least 1 visit per subject has complete data")  # si un sujet a un valeur NA a 1 covar a chq visit, alors il n'est plus pris en compte
+        if(nrow(data_tmp)!=length(tsurv)) stop("pblm")  #meme ordre ?
+        
+        # Xpredcl_vectTi (Ti event) vecteur par patient
+        data_tmp[,var.time] <- tsurv # remplacer la variable de temps par T
+        #matrices design
+        mat_ef <- model.matrix(object = fixed2[-2], data = data_tmp) # EF sans contraste et sans outcome, 
+        mat_ef <- as.data.frame(mat_ef[,-1])  # et sans intercept car non-estime
+        mat_ea <- model.matrix(object = random, data = data_tmp) # EA
+        # concatenation
+        Xpredcl_vectTi <- cbind(data_tmp[,var.time],mat_ef,mat_ea)  # 1ere colonne = tps de quadrature
+        #nb_ind_Xpred <- c(ncol(mat_ef),ncol(mat_ea))  #nb de var des EF, EA
+        Xpredcl_vectTi <- as.matrix(Xpredcl_vectTi)
+        Xpred_Ti <- Xpredcl_vectTi
+        nbXpred <- ncol(Xpred_Ti)
+        
+        # noeuds de quadrature Gauss-Kronrod
+        ptGK_1 <- 0.991455371120812639206854697526329
+        ptGK_2 <- 0.949107912342758524526189684047851
+        ptGK_3 <- 0.864864423359769072789712788640926
+        ptGK_4 <- 0.741531185599394439863864773280788
+        ptGK_5 <- 0.586087235467691130294144838258730
+        ptGK_6 <- 0.405845151377397166906606412076961
+        ptGK_7 <- 0.207784955007898467600689403773245
+        ptGK_8 <- 0.000000000000000000000000000000000
+        
+        # Xpredcl (Ti event)
+        data_tmp[,var.time] <- tsurv # remplacer la variable de temps par T
+        data_tmp[,var.time] <- (data_tmp[,var.time] - 0) / 2  #centr = centre de l intervalle 0 -> Ti
+        data_tmp$mid_interv_surv <- data_tmp[,var.time]  #hlgth = demi longueur de l intervalle 0 -> Ti
+        data_tmp <- data_tmp[rep(1:nrow(data_tmp),each=15),]  #1ligne/point quadrature/patient
+        data_tmp$ptGK <- c(ptGK_1,-ptGK_1,ptGK_2,-ptGK_2,ptGK_3,-ptGK_3,ptGK_4,-ptGK_4,ptGK_5,-ptGK_5,ptGK_6,-ptGK_6,ptGK_7,-ptGK_7,ptGK_8) #pnts de quadrature GK
+        data_tmp[,var.time] <- data_tmp[,var.time] + data_tmp$mid_interv_surv * data_tmp$ptGK  #centr+absc ou absc=hlgth*pnt
+        #matrices design
+        mat_ef <- model.matrix(object = fixed2[-2], data = data_tmp) # EF sans contraste et sans outcome,
+        mat_ef <- as.data.frame(mat_ef[,-1])  # et sans intercept car non-estime
+        mat_ea <- model.matrix(object = random, data = data_tmp) # EA
+        # concatenation
+        Xpredcl <- cbind(data_tmp[,var.time],mat_ef,mat_ea)  # 1ere colonne = tps de quadrature
+        Xpredcl <- as.matrix(Xpredcl)
+        Xpred <- Xpredcl
+        
+        # Xpredcl0 (Ti0, tronc gche)
+        if(idtrunc==1){
+            data_tmp[,var.time] <- rep(tsurv0,each=15) # remplacer la variable de temps par T0
+            data_tmp[,var.time] <- (data_tmp[,var.time] - 0) / 2  #centr = centre de l intervalle 0 -> T0i
+            data_tmp$mid_interv_surv <- data_tmp[,var.time]  #hlgth = demi longueur de l intervalle 0 -> T0i
+            data_tmp[,var.time] <- data_tmp[,var.time] + data_tmp$mid_interv_surv * data_tmp$ptGK  #centr+absc ou absc=hlgth*pnt
+            #matrices design
+            mat_ef <- model.matrix(object = fixed2[-2], data = data_tmp) # EF sans contraste et sans outcome,
+            mat_ef <- as.data.frame(mat_ef[,-1])  # et sans intercept car non-estime
+            mat_ea <- model.matrix(object = random, data = data_tmp) # EA
+            # concatenation
+            Xpredcl0 <- cbind(data_tmp[,var.time],mat_ef,mat_ea)
+            Xpredcl0 <- as.matrix(Xpredcl0)
+            Xpred <- cbind(Xpred,Xpredcl0)
+        }else{
+            Xpredcl0 <- NULL
+        }
+        
+        nbXpred <- c(nbXpred, ncol(Xpred))
+        
+    }
+    
+    # print("fin code ajoute")
+    
+    # print("Xpredcl_vectTi")
+    # print(head(Xpredcl_vectTi))
+    # print("Xpredcl")
+    # print(head(Xpredcl))
+    # if(idtrunc==1){
+    #   print("Xpredcl0")
+    #   print(head(Xpredcl0))
+    # }
+    # print("Xpred_Ti")
+    # print(dim(Xpred_Ti))
+    # print(head(Xpred_Ti))
+    # print("Xpred")
+    # print(dim(Xpred))
+    # print(head(Xpred))
+    
+    
+    
     ##parametres pour Fortran
     ns <- length(unique(IND))
     nv <- dim(X0)[2]
@@ -883,25 +1123,25 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     Yobs <- rep(0,nobs)
     time <- seq(minT,maxT,length.out=nsim)
     risq_est <- matrix(0,nrow=nsim,ncol=nbevt)
-    risqcum_est <- matrix(0,nrow=nsim,ncol=nbevt)                                
+    risqcum_est <- matrix(0,nrow=nsim,ncol=nbevt)
     predRE_Y <- rep(0,ns*nalea)
     rlindiv <- rep(0,ns)
     marker <- rep(0,nsim*ny)
     transfY <- rep(0,nsim*ny)
     
- 
+    
     
     ##nmes
     nmes <- matrix(0,ns,ny)
     for (k in 1:ny)
-        {
-            INDpresents <- which(unique(IND) %in% get(dataY[k])[,nom.subject])
-            nmes[INDpresents,k] <- as.vector(table(get(dataY[k])[,nom.subject]))
-        }
+    {
+        INDpresents <- which(unique(IND) %in% get(dataY[k])[,nom.subject])
+        nmes[INDpresents,k] <- as.vector(table(get(dataY[k])[,nom.subject]))
+    }
     maxmes <- max(apply(nmes,1,sum))
-
-
-
+    
+    
+    
     ##remplir idprob, etc
     z.X0 <- strsplit(nom.unique,split=":",fixed=TRUE)
     z.X0 <- lapply(z.X0,sort)
@@ -912,29 +1152,32 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     
     if (ncor>0) idcor <- colnames(X0) %in% cor.var.time +0
     else idcor <- rep(0,nv)
-
+    
     idsurv <- z.X0 %in% z.surv + z.X0 %in% z.survcause
     idsurv[1] <- 0 # 0 pour l'intercept
-
+    
     idtdv <- z.X0 %in% nom.timedepvar + 0
-
+    
     ## Si pas TimeDepVar dans formule survival
     if(length(nom.timedepvar) & all(idtdv==0))
     {
         stop("Variable in 'TimeDepVar' should also appear as a covariate in the 'survival' argument")
     }
-
+    
     ## nb coef ppour survie
     nvarxevt <- sum(idsurv==1) + nbevt*sum(idsurv==2)
     
     nea <- sum(idea)
     predRE <- rep(0,ns*nea)
-
-    ## nb parametres d'association
-    nasso <- nea*nbevt
-
+    
+    ## nb parametres d'association  #TS
+    if(sharedtype == 1)
+        nasso <- nea*nbevt
+    if(sharedtype == 2)
+        nasso <- nbevt
+    
     ## prm partie long
-    nef <- sum(idg==1)-1 
+    nef <- sum(idg==1)-1
     ncontr <- (ny-1)*sum(idcontr)
     nvc <- ifelse(idiag0==1,nea,nea*(nea+1)/2)-1
     ntr <- rep(0,ny)
@@ -943,114 +1186,111 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     ntr[which(idlink==2)] <- nbzitr[which(idlink==2)]+2
     ntr[which(idlink==3)] <- nbmod[which(idlink==3)]-1
     ntrtot <- sum(ntr)
-
+    
     ##nombre total de parametres
     NPM <- nrisqtot + nvarxevt + nasso +
         nef + ncontr + nvc + ncor + ntrtot + nalea + ny
-        
+    
     
     V <- rep(0, NPM*(NPM+1)/2)  #pr variance des parametres
-
+    
     ## parametres MC
     methInteg <- switch(methInteg,"MCO"=1,"MCA"=2,"QMC"=3)
     seqMC <- 0
     dimMC <- 0
-    if(methInteg==3) 
+    if(methInteg==3)
     {
         dimMC <- nea+nalea
         if(ncor>0) dimMC <- dimMC+maxmes
-        if(dimMC>0) seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1) 
+        if(dimMC>0) seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
     }
-
-
     
-## gestion de B=random(mod)
-
-        Brandom <- FALSE
-        if(length(cl$B)==2)
-            {
-                if(class(eval(cl$B[[2]]))!="multlcmm") stop("The model specified in B should be of class multlcmm")
-                if(as.character(cl$B[1])!="random") stop("Please use random() to specify random initial values")
-                
-                Brandom <- TRUE
-                B <- eval(cl$B[[2]])
-
-                if(length(posfix)) stop("Argument posfix is not compatible with random intial values")
-            }
     
-###valeurs initiales
+    
+    ## gestion de B=random(mod)
+    
+    Brandom <- FALSE
+    if(length(cl$B)==2)
+    {
+        if(class(eval(cl$B[[2]]))!="multlcmm") stop("The model specified in B should be of class multlcmm")
+        if(as.character(cl$B[1])!="random") stop("Please use random() to specify random initial values")
+        
+        Brandom <- TRUE
+        B <- eval(cl$B[[2]])
+        
+        if(length(posfix)) stop("Argument posfix is not compatible with random intial values")
+    }
+    
+    ###valeurs initiales
     if(!(missing(B)))
-        {
-            if(!is.vector(B)) stop("B should be a vector")
-                
-            if (length(B)==NPM) b <- B
-            else stop(paste("Vector B should be of length",NPM))
-            
-        }
+    {
+        if(!is.vector(B)) stop("B should be a vector")
+        
+        if (length(B)==NPM) b <- B
+        else stop(paste("Vector B should be of length",NPM))
+        
+    }
     else ## B missing
-        {
-            b <- rep(0,NPM)
-            
-            if(nbevt>0)
-            { #si Weibull et prms au carre pr positivite -> valeurs par defaut = 1
-                if((any(hazard!="Weibull")==FALSE) & (isFALSE(logscale)==TRUE))
-                {
-                    for(i in 1:nbevt)
-                    {
-                        if(typrisq[i]==2)
-                        {
-                            b[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- 1
-                        }
+    {
+        b <- rep(0,NPM)
+        
+        if(nbevt>0){  #TS : si Weibull et prms au carre pr positivite -> valeurs par defaut = 1
+            if(any(hazard!="Weibull")==FALSE & isFALSE(logscale)==TRUE){
+                for(i in 1:nbevt){
+                    if(typrisq[i]==2){
+                        b[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- 1
                     }
                 }
             }
-            
-
-            
-            if (nvc>0)
-                {
-                    if(idiag==1) b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- rep(1,nvc)
-                    if(idiag==0)
-                        {
-                            init.nvc <- diag(nea)
-                            init.nvc <- init.nvc[upper.tri(init.nvc, diag=TRUE)]
-                            b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- init.nvc[-1]
-                        }
-                }
-            
-            if(ncor>0) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor] <- 1
-
-            if(nalea>0) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:nalea] <- 1
-
-            b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <-  1
-
-            for(k in 1:ny)
+        }
+        
+        if (nvc>0)
+        {
+            if(idiag==1) b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- rep(1,nvc)
+            if(idiag==0)
             {
-                if(idlink[k]==0)
-                {
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-1] <- mean(get(dataY[k])[,nomsY[k]])
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])] <- 1
-                }
-                if(idlink[k]==1)
-                {
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-3] <- 0
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-2] <- -log(2)
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-1] <- 0.7
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])] <- 0.1
-                }
-                if(idlink[k]==2)
-                {
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+1] <- -2
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+2:ntr[k]] <- 0.1
-                }
-                if(idlink[k]==3)
-                {
-                    b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+1] <- 0
-                    if(ntr[k]>1) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+2:ntr[k]] <- 0.1
-                }
+                init.nvc <- diag(nea)
+                init.nvc <- init.nvc[upper.tri(init.nvc, diag=TRUE)]
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- init.nvc[-1]
             }
         }
-
+        
+        if(ncor>0) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor] <- 1
+        
+        if(nalea>0) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:nalea] <- 1
+        
+        b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <-  1
+        
+        for(k in 1:ny)
+        {
+            if(idlink[k]==0)
+            {
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-1] <- mean(get(dataY[k])[,nomsY[k]])
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])] <- 1
+            }
+            if(idlink[k]==1)
+            {
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-3] <- 0
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-2] <- -log(2)
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-1] <- 0.7
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])] <- 0.1
+            }
+            if(idlink[k]==2)
+            {
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+1] <- -2
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+2:ntr[k]] <- 0.1
+            }
+            if(idlink[k]==3)
+            {
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+1] <- 0
+                if(ntr[k]>1) b[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:k])-ntr[k]+2:ntr[k]] <- 0.1
+            }
+        }
+    }
+    
+    
+    
+    
     ## ## faire wRandom et b0Random
     ## nef2 <- sum(idg!=0)-1 + (ny-1)*sum(idcontr)
     ## NPM2 <- nef2+ nvc+ncor+nalea+ny+ntrtot
@@ -1091,7 +1331,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     ##         m <- m+ny-1
     ##     }
     ## }
-
+    
     ## if(nvc>0)
     ## {
     ##     wRandom[nef+1:nvc] <- nef2+1:nvc
@@ -1104,23 +1344,23 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     ## if(ncor>0) wRandom[nef+nvc+nw+1:ncor] <- nef2+nvc+1:ncor
     
     ## wRandom[nef+nvc+nw+ncor+1:ny] <- nef2+nvc+ncor+1:ny
-
+    
     ## if(nalea>0)
     ## {
     ##     wRandom[nef+nvc+nw+ncor+ny+1:nalea] <- nef2+nvc+ncor+ny+1:nalea
     ## }
-
+    
     ## wRandom[nef+nvc+nw+ncor+ny+nalea+1:ntrtot] <- nef2+nvc+ncor+ny+nalea+1:ntrtot
     ## ## wRandom et b0Random ok.
-
-
+    
+    
     ##------------------------------------------
     ##------nom au vecteur best
     ##--------------------------------------------
-
+    
     nom.X0 <- colnames(X0)
     nom.X0[nom.X0=="(Intercept)"] <- "intercept"
-
+    
     if(nbevt>0)
     {
         ##prm fct de risque
@@ -1133,14 +1373,14 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                 {
                     names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:2]," log(Weibull",1:2,")",sep="")
                 }
-                if(typrisq[i]==1)  
+                if(typrisq[i]==1)
                 {
-                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," log(piecewise",1:(nz[i]-1),")",sep="")  
+                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," log(piecewise",1:(nz[i]-1),")",sep="")
                 }
-                if(typrisq[i]==3)  
+                if(typrisq[i]==3)
                 {
-                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," log(splines",1:(nz[i]+2),")",sep="")  
-                }  
+                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," log(splines",1:(nz[i]+2),")",sep="")
+                }
             }
         }
         else
@@ -1152,20 +1392,20 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                 {
                     names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:2]," +/-sqrt(Weibull",1:2,")",sep="")
                 }
-                if(typrisq[i]==1)  
+                if(typrisq[i]==1)
                 {
-                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," +/-sqrt(piecewise",1:(nz[i]-1),")",sep="")  
+                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," +/-sqrt(piecewise",1:(nz[i]-1),")",sep="")
                 }
-                if(typrisq[i]==3)  
+                if(typrisq[i]==3)
                 {
-                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," +/-sqrt(splines",1:(nz[i]+2),")",sep="")  
-                }  
-            }   
+                    names(b)[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- paste(nom1[1:(nz[i]-1)]," +/-sqrt(splines",1:(nz[i]+2),")",sep="")
+                }
+            }
         }
-
-
+        
+        
         ##prm covariables survival
-        nom1 <- NULL  
+        nom1 <- NULL
         for(j in 1:nv)
         {
             if(idsurv[j]==1) #X
@@ -1187,22 +1427,29 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                     nom1 <- c(nom1,paste("I(t>",nom.timedepvar,") event",1:nbevt,sep=""))
                 }
                 else
-                {                  
+                {
                     nom1 <- c(nom1,paste(nom.X0[j],paste("event",1:nbevt,sep="")))
                 }
             }
-
+            
         }
         
-        if(nvarxevt>0) names(b)[nrisqtot+1:nvarxevt] <- nom1 
-
-        for(i in 1:nbevt)
-        {
-            names(b)[nrisqtot+nvarxevt+(nbevt-1)*nea+1:nea] <- paste("event",i," asso",1:nea,sep="")
+        if(nvarxevt>0) names(b)[nrisqtot+1:nvarxevt] <- nom1
+        
+        
+        if(sharedtype == 1){   #TS
+            for(i in 1:nbevt)
+            {
+                names(b)[nrisqtot+nvarxevt+(nbevt-1)*nea+1:nea] <- paste("event",i," asso",1:nea,sep="")
+            }
         }
+        if(sharedtype == 2)
+            names(b)[nrisqtot+nvarxevt+1:nbevt] <- paste("event",1:nbevt," asso",sep="")
+        
+        
     }
     
-
+    
     names(b)[nrisqtot+nvarxevt+nasso+1:nef] <- nom.X0[-1][idg[-1]!=0]
     if(ncontr!=0) names(b)[nrisqtot+nvarxevt+nasso+nef+1:ncontr] <- paste("contrast",paste(rep(1:sum(idcontr),each=ny-1),rep(1:(ny-1),sum(idcontr)),sep=""),sep="")
     
@@ -1211,34 +1458,34 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     if(idlink[1]==2) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+1:ntr[1]]<- paste("I-splines",c(1:ntr[1]),sep="")
     if(idlink[1]==3) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+1:ntr[1]]<- paste("Thresh",c(1:ntr[1]),sep="")
     if(ny>1)
+    {
+        for (yk in 2:ny)
         {
-            for (yk in 2:ny)
-                {
-                    if(idlink[yk]==0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- c("Linear 1","Linear 2")
-                    if(idlink[yk]==1) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("Beta",c(1:ntr[yk]),sep="")
-                    if(idlink[yk]==2) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("I-splines",c(1:ntr[yk]),sep="")
-                    if(idlink[yk]==3) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("Thresh",c(1:ntr[yk]),sep="")
-                }
+            if(idlink[yk]==0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- c("Linear 1","Linear 2")
+            if(idlink[yk]==1) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("Beta",c(1:ntr[yk]),sep="")
+            if(idlink[yk]==2) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("I-splines",c(1:ntr[yk]),sep="")
+            if(idlink[yk]==3) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]<- paste("Thresh",c(1:ntr[yk]),sep="")
         }
+    }
     if(nvc!=0)names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- paste("varcov",c(1:nvc))
-
+    
     if(ncor>0) {names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+1:ncor] <- paste("cor",1:ncor,sep="")}
     if(nalea!=0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:nalea] <- paste("std.randomY",1:ny,sep="")
     
     names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <- paste("std.err",1:ny)
-
-
-
+    
+    
+    
     ## prm fixes
     fix <- rep(0,NPM)
     if(length(posfix))
-        {
-            if(any(!(posfix %in% 1:NPM))) stop("Indexes in posfix are not correct")
-
-            fix[posfix] <- 1
-        }
+    {
+        if(any(!(posfix %in% 1:NPM))) stop("Indexes in posfix are not correct")
+        
+        fix[posfix] <- 1
+    }
     if(length(posfix)==NPM) stop("No parameter to estimate")
-
+    
     
     ## pour H restreint
     Hr <- as.numeric(partialH)
@@ -1246,11 +1493,26 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     pbH[grep("I-splines",names(b))] <- 1
     pbH[posfix] <- 0
     if(sum(pbH)==0 & Hr==1) stop("No partial Hessian matrix can be defined")
-
     
-#browser()
-###estimation
-        
+    #browser()
+    ###estimation
+    
+    conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
+    
+    print(paste("sharedtype = ",sharedtype,sep=""))  #TS
+    print("nbXpred = ")
+    print(nbXpred)
+    print("Xpred_Ti = ")
+    print(dim(Xpred_Ti))
+    print(head(Xpred_Ti))
+    print("Xpred = ")
+    print(dim(Xpred))
+    print(head(Xpred))
+    print("b = ")
+    print(b)
+    
+    print("DEBUT FORTRAN")   #TS
+    
     out <- .Fortran(C_irtsre,
                     as.double(Y0),
                     as.double(X0),
@@ -1290,9 +1552,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                     resid_ss=as.double(resid_ss),
                     predRE=as.double(predRE),
                     predRE_Y=as.double(predRE_Y),
-                    as.double(convB),
-                    as.double(convL),
-                    as.double(convG),
+                    as.double(conv3), # TS
                     as.integer(maxiter),
                     as.double(epsY),
                     as.integer(idlink),
@@ -1314,104 +1574,107 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                     as.integer(methInteg),
                     as.integer(nMC),
                     as.integer(dimMC),
-                    as.double(seqMC))
-#}
-
-
+                    as.double(seqMC),
+                    as.integer(sharedtype),  #TS
+                    as.integer(nbXpred),
+                    as.double(Xpred_Ti),
+                    as.double(Xpred))
+    #}
     
-
+    print("FIN FORTRAN")
+    
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
+    {
+        if(out$conv==3)
         {
-            if(out$conv==3)
-                {
-                    mr <- NPM-sum(pbH)-length(posfix)
-                    Vr <- matrix(0,mr,mr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    Vr <- t(Vr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    V <- matrix(NA,NPM,NPM)
-                    V[setdiff(1:NPM,c(which(pbH==1),posfix)),setdiff(1:NPM,c(which(pbH==1),posfix))] <- Vr
-                    V[,posfix] <- 0
-                    V[posfix,] <- 0
-                    V <- V[upper.tri(V,diag=TRUE)]
-                }
-            else
-                {
-                    mr <- NPM-length(posfix)
-                    Vr <- matrix(0,mr,mr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    Vr <- t(Vr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    V <- matrix(0,NPM,NPM)
-                    V[setdiff(1:NPM,posfix),setdiff(1:NPM,posfix)] <- Vr
-                    V <- V[upper.tri(V,diag=TRUE)]
-                }
+            mr <- NPM-sum(pbH)-length(posfix)
+            Vr <- matrix(0,mr,mr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            Vr <- t(Vr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            V <- matrix(NA,NPM,NPM)
+            V[setdiff(1:NPM,c(which(pbH==1),posfix)),setdiff(1:NPM,c(which(pbH==1),posfix))] <- Vr
+            V[,posfix] <- 0
+            V[posfix,] <- 0
+            V <- V[upper.tri(V,diag=TRUE)]
         }
+        else
+        {
+            mr <- NPM-length(posfix)
+            Vr <- matrix(0,mr,mr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            Vr <- t(Vr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            V <- matrix(0,NPM,NPM)
+            V[setdiff(1:NPM,posfix),setdiff(1:NPM,posfix)] <- Vr
+            V <- V[upper.tri(V,diag=TRUE)]
+        }
+    }
     else
+    {
+        if(out$conv==3)
         {
-            if(out$conv==3)
-                {
-                    mr <- NPM-sum(pbH)
-                    Vr <- matrix(0,mr,mr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    Vr <- t(Vr)
-                    Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-                    V <- matrix(NA,NPM,NPM)
-                    V[setdiff(1:NPM,which(pbH==1)),setdiff(1:NPM,which(pbH==1))] <- Vr
-                    V <- V[upper.tri(V,diag=TRUE)]
-                }
-            else
-                {
-                    V <- out$V
-                }
+            mr <- NPM-sum(pbH)
+            Vr <- matrix(0,mr,mr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            Vr <- t(Vr)
+            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+            V <- matrix(NA,NPM,NPM)
+            V[setdiff(1:NPM,which(pbH==1)),setdiff(1:NPM,which(pbH==1))] <- Vr
+            V <- V[upper.tri(V,diag=TRUE)]
         }
+        else
+        {
+            V <- out$V
+        }
+    }
     
-
+    
     ## Creation du vecteur cholesky
     Cholesky <- rep(0,(nea*(nea+1)/2))
     if(idiag0==0 & nvc>0)
-        {
-            Cholesky[1:(nvc+1)] <- c(1,out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
-            ## Construction de la matrice U
-            U <- matrix(0,nrow=nea,ncol=nea)
-            U[upper.tri(U,diag=TRUE)] <- Cholesky[1:(nvc+1)]
-            z <- t(U) %*% U
-            out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- z[upper.tri(z,diag=TRUE)][-1]
-        }
+    {
+        Cholesky[1:(nvc+1)] <- c(1,out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+        ## Construction de la matrice U
+        U <- matrix(0,nrow=nea,ncol=nea)
+        U[upper.tri(U,diag=TRUE)] <- Cholesky[1:(nvc+1)]
+        z <- t(U) %*% U
+        out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- z[upper.tri(z,diag=TRUE)][-1]
+    }
     if(idiag0==1 & nvc>0)
-        {
-            id <- 1:nea
-            indice <- rep(id+id*(id-1)/2)
-            Cholesky[indice] <- c(1,out$best[nrisqtot+nvarxevt+nef+ncontr+1:nvc])
-            out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc]**2
-        }
-
+    {
+        id <- 1:nea
+        indice <- rep(id+id*(id-1)/2)
+        Cholesky[indice] <- c(1,out$best[nrisqtot+nvarxevt+nef+ncontr+1:nvc])
+        out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc]**2
+    }
+    
     ##predictions
     predRE <- matrix(out$predRE,ncol=nea,byrow=T)
     predRE <- data.frame(unique(IND),predRE)
     colnames(predRE) <- c(nom.subject,nom.X0[idea!=0])
-
+    
     if (nalea!=0)
-        {
-            predRE_Y <- matrix(out$predRE_Y,ncol=ny,byrow=TRUE)
-            predRE_Y <- data.frame(unique(IND),predRE_Y)
-            colnames(predRE_Y)  <- c(nom.subject,nomsY)
-        }
+    {
+        predRE_Y <- matrix(out$predRE_Y,ncol=ny,byrow=TRUE)
+        predRE_Y <- data.frame(unique(IND),predRE_Y)
+        colnames(predRE_Y)  <- c(nom.subject,nomsY)
+    }
     else
-        {
-            predRE_Y <- rep(NA,nalea*ns)
-        }
-
-
+    {
+        predRE_Y <- rep(NA,nalea*ns)
+    }
+    
+    
     ##pred
     pred_m <- out$Yobs-out$resid_m
     pred_ss <- out$Yobs - out$resid_ss
     pred <- data.frame(IND,outcome,pred_m,out$resid_m,pred_ss,out$resid_ss,out$Yobs)
-
+    
     colnames(pred)<-c(nom.subject,"Yname","pred_m","resid_m","pred_ss","resid_ss","obs")
     rownames(pred) <- NULL
-
+    
     
     ## risques
     if(nbevt>0)
@@ -1436,20 +1699,20 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     estimlink <- as.vector(rbind(ysim,transfo))
     estimlink <- matrix(estimlink,nsim,2*ny)
     colnames(estimlink) <- paste(c("","transf"),rep(nomsY, each=2),sep="")
-
+    
     if(any(idlink==3))
     {
         if(any(2*nbmod[which(idlink==3)] > nsim))
         {
-            nsim2 <- max(2*nbmod[which(idlink==3)])
-
+            nsim2 <- maxval(2*nbmod[which(idlink==3)])
+            
             estimlink2 <- matrix(NA, nrow=nsim2, ncol=2*ny)
             estimlink2[1:nsim,] <- estimlink
             
             colnames(estimlink2) <- colnames(estimlink)
             estimlink <- estimlink2
         }
-
+        
         seuils <- function(x)
         {
             n <- length(x)
@@ -1465,21 +1728,21 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
             {
                 estimlink[,2*(k-1)+1] <- NA
                 estimlink[,2*(k-1)+2] <- NA
-
+                
                 nb <- nbmod[k]-1
                 
                 marker <- rep(modalites[[k]], each=2)
                 seuilsk <- seuils(out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+1:nb])
                 transfY <- rep(seuilsk, each=2)
                 transfY <- c(-Inf,transfY,Inf)
-
+                
                 estimlink[1:length(marker), 2*(k-1)+1] <- marker
                 estimlink[1:length(transfY), 2*(k-1)+2] <- transfY
             }
             
             sumntr <- sumntr + ntr[k]
         }
-
+        
         ## remplacer -Inf et Inf
         hy <- estimlink[,2*(1:ny)]
         maxhy <- max(hy[is.finite(hy)])
@@ -1494,7 +1757,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
         }
         
     }
-
+    
     N <- rep(NA,12)
     N[1] <- 0 #nprob
     N[2] <- nrisqtot
@@ -1510,18 +1773,18 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
     N[12] <- ny
     N[13] <- nobs
     N[14] <- nbevt
-
+    
     nevent <- rep(0,nbevt)
     for(ke in 1:nbevt)
     {
         nevent[ke] <- length(which(devt==ke))
     }
-
+    
     Nprm <- c(nprisq,ntr)
     
-
+    
     nom.X0[nom.X0=="(Intercept)"] <- "Intercept"
-
+    
     ## noms des variables
     Names <- list(Xnames=nom.X0,Ynames=nomsY,
                   ID=nom.subject,Tnames=noms.surv,
@@ -1529,7 +1792,7 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                   Xvar=setdiff(ttesLesVar,noms.surv))
     
     names(modalites) <- nomsY
-
+    
     form <- list(fixed=fixed2[-2], random=random, contr=contr,
                  form.commun=form.commun, form.cause=form.cause,
                  form.cor=form.cor)
@@ -1545,13 +1808,14 @@ function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,e
                logspecif=logspecif,predSurv=predSurv,typrisq=typrisq,hazardnodes=zi,nz=nz,
                estimlink=estimlink,epsY=epsY,linktype=idlink,linknodes=zitr,nbnodes=nbnodes,nbmod=nbmod,mod=modalites,
                na.action=nayk,AIC=2*(length(out$best)-length(posfix)-out$loglik),BIC=(length(out$best)-length(posfix))*log(ns)-2*out$loglik,data=datareturn,
-                                        #wRandom=wRandom,b0Random=b0Random,
+               #wRandom=wRandom,b0Random=b0Random,
                CPUtime=cost[3])
     
     names(res$best) <- names(b)
-    class(res) <-c("joint_lpm")
-
+    class(res) <-c("irt")
+    
     if(verbose==TRUE) cat("The program took", round(cost[3],2), "seconds \n")
-
+    
     return(res)
 }
+

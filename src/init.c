@@ -4,7 +4,7 @@
 #include "JLPM.h"
 
 static R_FortranMethodDef FortRout[] = {
-  {"irtsre", (DL_FUNC) &F77_SUB(irtsre), 63},
+  {"irtsre", (DL_FUNC) &F77_SUB(irtsre), 65},
   {"proba_irtsre", (DL_FUNC) &F77_SUB(proba_irtsre), 41},
   {NULL, NULL, 0}
 };
