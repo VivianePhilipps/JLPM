@@ -2128,7 +2128,7 @@ end subroutine fct_pred_curlev_irtsre_2
 
 
 
-! fct calculant risq de base au tps event et risq cumulé (sans varexp) par quadrature de Konrod
+! fct calculant risq de base au tps event et risq cumul? (sans varexp) par quadrature de Konrod
 
 subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
 
@@ -2205,7 +2205,7 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   end if
   !write(*,*)'predictions du niv courant aux tps de quadrature',pred_GK_event !TS
   
-  !multiplication par prm estime et passage à l'exponentiel a chq pnt de quadrature
+  !multiplication par prm estime et passage ? l'exponentiel a chq pnt de quadrature
   pred_GK_event = EXP(pred_GK_event*basso)
   if (idtrunc.eq.1) then
     pred_GK_entry = EXP(pred_GK_entry*basso)
@@ -2233,10 +2233,10 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
     surv0(k) = SUM(fct_pred_surv0_pond)
   end if
 
-  !division par hlgth -> resultat de l integral
-  surv(k) = surv(k) / hlgth_event
+  !multiplier par hlgth -> resultat de l integral
+  surv(k) = surv(k) * hlgth_event
   if (idtrunc.eq.1) then
-    surv0(k) = surv0(k) / hlgth_entry
+    surv0(k) = surv0(k) * hlgth_entry
   else
     surv0(k) = 0
   end if
