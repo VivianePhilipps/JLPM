@@ -269,7 +269,7 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
 {
     ptm <- proc.time()
-    if(verbose==TRUE) cat("Be patient, irt is running ... \n")
+    if(verbose==TRUE) cat("Be patient, joint_lpm is running ... \n")
     
     cl <- match.call()
     
