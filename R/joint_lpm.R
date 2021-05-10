@@ -1024,6 +1024,7 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
         colnames(data_tmp) <- c(subject,nom.var)
         data_tmp$tmp_name <- NA
         colnames(data_tmp)[which(colnames(data_tmp) == "tmp_name")] <- var.time
+
         if(nrow(data_tmp)!=length(unique(IND))) stop("Make sure at least 1 visit per subject has complete data")  # si un sujet a un valeur NA a 1 covar a chq visit, alors il n'est plus pris en compte
         if(nrow(data_tmp)!=length(tsurv)) stop("pblm")  #meme ordre ?
         
@@ -1499,20 +1500,18 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
     
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
     
-    print(paste("sharedtype = ",sharedtype,sep=""))  #TS
-    print("nbXpred = ")
-    print(nbXpred)
-    print("Xpred_Ti = ")
-    print(dim(Xpred_Ti))
-    print(head(Xpred_Ti))
-    print("Xpred = ")
-    print(dim(Xpred))
-    print(head(Xpred))
-    print("b = ")
-    print(b)
-    
-    print("DEBUT FORTRAN")   #TS
-    
+    # print(paste("sharedtype = ",sharedtype,sep=""))  #TS
+    # print("nbXpred = ")
+    # print(nbXpred)
+    # print("Xpred_Ti = ")
+    # print(dim(Xpred_Ti))
+    # print(head(Xpred_Ti))
+    # print("Xpred = ")
+    # print(dim(Xpred))
+    # print(head(Xpred))
+    # print("b = ")
+    # print(b)
+
     out <- .Fortran(C_irtsre,
                     as.double(Y0),
                     as.double(X0),
@@ -1580,8 +1579,6 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
                     as.double(Xpred_Ti),
                     as.double(Xpred))
     #}
-    
-    print("FIN FORTRAN")
     
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
