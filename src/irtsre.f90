@@ -1247,7 +1247,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               Y3=matmul(VC,Y2)
               Y4=DOT_PRODUCT(Y2,Y3)
               
-              div = (dble(2*3.14159265)**(dble(nmes(i,yk))/2))*sqrt(exp(det))
+              div = (dble(2*3.14159265)**(dble(nmes(i,yk))/2.d0))*sqrt(exp(det))
               
               vrais_Y = vrais_Y * exp(-Y4/2.d0)/div
 

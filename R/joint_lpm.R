@@ -1809,7 +1809,7 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
                CPUtime=cost[3])
     
     names(res$best) <- names(b)
-    class(res) <-c("irt")
+    class(res) <-c("joint_lpm")
     
     if(verbose==TRUE) cat("The program took", round(cost[3],2), "seconds \n")
     
