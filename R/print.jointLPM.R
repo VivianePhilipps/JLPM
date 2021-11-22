@@ -1,6 +1,6 @@
 #' @export
 #'
-print.joint_lpm <- function(x,...)
+print.jointLPM <- function(x,...)
 {
     cat("Joint latent process model with shared random effects", "\n")
     cat("     fitted by maximum likelihood method", "\n")

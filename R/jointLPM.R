@@ -262,14 +262,14 @@
 #'
 #' @export
 #' 
-joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
+jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
                 survival=NULL,hazard="Weibull",hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
 {
     ptm <- proc.time()
-    if(verbose==TRUE) cat("Be patient, joint_lpm is running ... \n")
+    if(verbose==TRUE) cat("Be patient, jointLPM is running ... \n")
     
     cl <- match.call()
     
@@ -1809,7 +1809,7 @@ joint_lpm <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",in
                CPUtime=cost[3])
     
     names(res$best) <- names(b)
-    class(res) <-c("joint_lpm")
+    class(res) <-c("jointLPM")
     
     if(verbose==TRUE) cat("The program took", round(cost[3],2), "seconds \n")
     

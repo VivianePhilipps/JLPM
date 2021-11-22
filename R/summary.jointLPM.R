@@ -1,6 +1,6 @@
 #' @export
 #'
-summary.joint_lpm <- function(object,...)
+summary.jointLPM <- function(object,...)
 {
     x <- object
 
