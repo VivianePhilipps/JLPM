@@ -209,10 +209,8 @@
 #' data (example: Surv(Time,EntryTime,Indicator)) or of type "right" for right-censored 
 #' data (example: Surv(Time,Indicator)). Multiple causes of event can be considered 
 #' in the Indicator (0 for censored, k for cause k of event). The right side of the 
-#' formula specifies the names of covariates to include in the survival model with 
-#' mixture() when the effect is class-specific (example: Surv(Time,Indicator) ~ X1 
-#' + mixture(X2) for a class-common effect of X1 and a class-specific effect of X2). 
-#' In the presence of competing events, covariate effects are common by default. 
+#' formula specifies the names of covariates to include in the survival model(example: 
+#' Surv(Time,Indicator) ~ X1 for an effect of X1). 
 #' Code cause(X3) specifies a cause-specific covariate effect for X3 on each cause 
 #' of event while cause1(X3) (or cause2(X3), ...) specifies a cause-specific effect 
 #' of X3 on the first (or second, ...) cause only.
