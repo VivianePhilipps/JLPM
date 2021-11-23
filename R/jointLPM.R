@@ -1,83 +1,139 @@
-#' Estimation of multivariate mixed-effect models and multivariate latent class
-#' mixed-effect models for multivariate longitudinal outcomes of possibly
-#' multiple types (continuous Gaussian, continuous non-Gaussian - curvilinear)
-#' that measure the same underlying latent process.
+#' Estimation of latent process joint models for multivariate longitudinal 
+#' outcomes and time-to-event data.
 #' 
-#' This function constitutes a multivariate extension of function \code{lcmm}.
-#' It fits multivariate mixed models and multivariate latent class mixed models
-#' for multivariate longitudinal outcomes of different types. It handles
-#' continuous longitudinal outcomes (Gaussian or non-Gaussian, curvilinear) as
-#' well as bounded quantitative and discrete longitudinal outcomes. Next
-#' version will also handle ordinal outcomes.  The model assumes that all the     #TS: fait non ?
-#' outcomes measure the same underlying latent process defined as their common
-#' factor, and each outcome is related to this latent common factor by a
-#' specific parameterized link function.  At the latent process level, the
-#' model estimates a standard linear mixed model or a latent class linear mixed
-#' model when heterogeneity in the population is investigated (in the same way
-#' as in function \code{hlme}). Parameters of the nonlinear link functions and
-#' of the latent process mixed model are estimated simultaneously using a
-#' maximum likelihood method.
+#' This function fits extended joint models with shared random effects.
+#' The longitudinal submodel handles multiple continuous longitudinal outcomes
+#' (Gaussian or  non-Gaussian, curvilinear) as well as 
+#' ordinal longitudinal outcomes in a mixed effects framework. The model assumes that all the outcomes 
+#' measure the same underlying latent process defined as their common
+#' factor, and each outcome is related to this latent common factor by
+#' outcome-specific measurement models whose nature depends on the type of the 
+#' associated outcome (linear model for Gaussian outcome, curvilinear model for 
+#' non-Gaussian outcome, cumulative probit model for ordinal outcome).
+#' At the latent process level, the model estimates a standard linear mixed model.
+#' The survival submodel handles right-censored (possibly left-truncated) time-to-events with competing risks.
+#' The association between the longitudinal and the survival data is captured by including 
+#' the random effect from the mixed model or the predicted current level 
+#' of the underlying process as a linear predictor in the proportional hazard survival model.
+#' Parameters of the measurement models, of the latent process mixed model and of the 
+#' survival model are estimated simultaneously using a maximum likelihood method.
 #' 
 #' 
-#' A. THE PARAMETERIZED LINK FUNCTIONS
 #' 
-#' \code{multlcmm} function estimates multivariate latent class mixed models       #TS: \code{irt} non ?
-#' for different types of outcomes by assuming a parameterized link function
-#' for linking each outcome Y_k(t) with the underlying latent common factor
-#' L(t) they measure. To fix the latent process dimension, we chose to
-#' constrain at the latent process level the (first) intercept of the latent
-#' class mixed model at 0 and the standard error of the first random effect at
-#' 1.
+#' A. THE MEASUREMENT MODELS
 #' 
-#' 1. With the "linear" link function, 2 parameters are required for the
-#' following transformation (Y(t) - b1)/b2
+#' \code{jointLPM} function estimates one measurement model per outcome to link
+#' each outcome Y_k(t) with the underlying latent common factor L(t) they measure.
+#' To fix the latent process dimension, we chose to constrain at the latent process 
+#' level the intercept of the mixed model at 0 and the 
+#' standard error of the first random effect at 1. The nature of each measurment
+#' model adapts to the type of the outcome it models. 
 #' 
-#' 2. With the "beta" link function, 4 parameters are required for the
+#' 1. For continuous Gaussian outcomes, linear models are used and required 2 parameters for 
+#' the following transformation (Y(t) - b1)/b2
+#' 
+#' 2. For continuous non-Gaussian outcomes, curvilinear models can be used using 
+#' parametrized link function to link outcomes to the latent process. 
+#' With the "beta" link function, 4 parameters are required for the
 #' following transformation: [ h(Y(t)',b1,b2) - b3]/b4 where h is the Beta CDF
 #' with canonical parameters c1 and c2 that can be derived from b1 and b2 as
 #' c1=exp(b1)/[exp(b2)*(1+exp(b1))] and c2=1/[exp(b2)*(1+exp(b1))], and Y(t)'
 #' is the rescaled outcome i.e. Y(t)'= [ Y(t) - min(Y(t)) + epsY ] / [
 #' max(Y(t)) - min(Y(t)) +2*epsY ].
-#' 
-#' 3. With the "splines" link function, n+2 parameters are required for the
-#' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2} I_{n+1}(Y(t)),
+#' With the "splines" link function, n+2 parameters are required for the
+#' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2}*I_{n+1}(Y(t)),
 #' where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constraint the
 #' parameters to be positive, except for b_1, the program estimates b_k^* (for
 #' k=2,...,n+2) so that b_k=(b_k^*)^2. This parameterization may lead in some
 #' cases to problems of convergence that we are currently addressing.
 #' 
-#' Details of these parameterized link functions can be found in the papers:
-#' Proust-Lima et al. (Biometrics 2006) and Proust-Lima et al. (BJMSP 2013).
+#' 3. For discrete ordinal outcomes, cumulative probit models are used. For a
+#' (n+1)-level outcome, the model consist of determining n thresholds t_k in the 
+#' latent process scale which correspond to the outcome level changes. Then,
+#' Y(t) = n' <=> t_n' < L(t) + e <= t_(n'+1) with e the standard error of the outcome.
+#' In \code{B} or \code{best}, thresholds are presented as squared root of the increment,
+#' such as t_1=t'_1, t_2=t_1+(t'_2)^2, t_3=t_2+(t'_3)^2, ...
 #' 
-#' B. THE VECTOR OF PARAMETERS B
+#' 
+#' B. THE SURVIVAL MODEL
+#' 
+#' a. BASELINE RISK FUNCTIONS
+#' 
+#' For the baseline risk functions, the following parameterizations were considered. 
+#' 
+#' 1. With the "Weibull" function: 2 parameters are necessary w_1 and w_2 so that 
+#' the baseline risk function a_0(t) = w_1^2*w_2^2*(w_1^2*t)^(w_2^2-1) if logscale=FALSE 
+#' and a_0(t) = exp(w_1)*exp(w_2)(t)^(exp(w_2)-1) if logscale=TRUE.
+#' 
+#' 2. with the "piecewise" step function and nz nodes (y_1,...y_nz), nz-1 parameters 
+#' are necesssary p_1,...p_nz-1 so that the baseline risk function a_0(t) = p_j^2 
+#' for y_j < t =< y_j+1 if logscale=FALSE and a_0(t) = exp(p_j) for y_j < t =< y_j+1 if logscale=TRUE.
+#' 
+#' 3. with the "splines" function and nz nodes (y_1,...y_nz), nz+2 parameters 
+#' are necessary s_1,...s_nz+2 so that the baseline risk function a_0(t) = sum_j s_j^2 M_j(t) 
+#' if logscale=FALSE and a_0(t) = sum_j exp(s_j) M_j(t) if logscale=TRUE where M_j is the basis of cubic M-splines.
+#' Two parametrizations of the baseline risk function are proposed (logscale=TRUE or FALSE) 
+#' because in some cases, especially when the instantaneous risks are very close to 0, 
+#' some convergence problems may appear with one parameterization or the other. 
+#' As a consequence, we recommend to try the alternative parameterization (changing logscale option) 
+#' when a model does not converge (maximum number of iterations reached) and
+#' where convergence criteria based on the parameters and likelihood are small.
+#' 
+#' 
+#' b. ASSOCIATION BETWEEN LONGITUDINAL AND SURVIVAL DATA
+#' 
+#' The association between the longitudinal and the survival data is captured by including 
+#' a function of the elements from the latent process mixed model as a predictor in the survival model.
+#'  We implement two association structures,
+#' that should be specified through 'sharedtype' argument.
+#' 
+#' 1. the random effect from the latent process linear mixed model (sharedtype=1) :
+#' the q random effects modeling the individual deviation in the longitudinal model are also included
+#' in the survival model, so that a q-vector of parameters measures the association
+#' between the risk of event and the longitudinal outcome(s).
+#' 
+#' 2. the predicted current level of the underlying process (sharedtype=2) :
+#' the predicted latent process defined by the mixed model appears as
+#' time-dependent covariate in the survival model.
+#' The association between the longitudinal process and the risk of event
+#' is then quantified by a unique parameter.
+#' 
+#'  
+#' C. THE VECTOR OF PARAMETERS B
 #' 
 #' The parameters in the vector of initial values \code{B} or in the vector of
 #' maximum likelihood estimates \code{best} are included in the following
-#' order: (1) ng-1 parameters are required for intercepts in the latent class
-#' membership model, and if covariates are included in \code{classmb}, ng-1
-#' paramaters should be entered for each one; (2) for all covariates in
-#' \code{fixed}, one parameter is required if the covariate is not in
-#' \code{mixture}, ng paramaters are required if the covariate is also in
-#' \code{mixture}; When ng=1, the intercept is not estimated and no parameter
-#' should be specified in \code{B}. When ng>1, the first intercept is not
-#' estimated and only ng-1 parameters should be specified in \code{B}; (3) for
-#' all covariates included with \code{contrast()} in \code{fixed}, one
+#' order:
+#' (1) parameters for the baseline risk function: 2 parameters for each Weibull, 
+#' nz-1 for each piecewise constant risk and nz+2 for each splines risk. In the 
+#' presence of competing events, the number of parameters should be adapted to 
+#' the number of causes of event;
+#' (2) for all covariates in survival, one parameter 
+#' is required. Covariates parameters should be included in the same order as in survival.
+#' In the presence of cause-specific effects, the number of parameters should be
+#' multiplied by the number of causes;
+#' (3) parameter(s) of association between the longitudinal 
+#' and the survival process: for sharedtype=1, one parameter per random effect
+#' and per cause of event is 
+#' required; for shredtype=2, one parameter is required;
+#' (4) for all covariates  in fixed, one parameter is required. Parameters should
+#' be included in the same  order as in fixed;
+#' (5)for all covariates included with \code{contrast()} in \code{fixed}, one
 #' supplementary parameter per outcome is required excepted for the last
-#' outcome for which the parameter is not estimated but deduced from the
-#' others; (4) if \code{idiag=TRUE}, the variance of each random-effect
-#' specified in \code{random} is required excepted the first one (usually the
-#' intercept) which is constrained to 1. (5) if \code{idiag=FALSE}, the
-#' inferior triangular variance-covariance matrix of all the random-effects is
-#' required excepted the first variance (usually the intercept) which is
-#' constrained to 1. (5) only if \code{nwg=TRUE} and \code{ng}>1, ng-1
-#' parameters for class-specific proportional coefficients for the variance
-#' covariance matrix of the random-effects; (6) if \code{cor} is specified, the
-#' standard error of the Brownian motion or the standard error and the
-#' correlation parameter of the autoregressive process; (7) the standard error
-#' of the outcome-specific Gaussian errors (one per outcome); (8) if
-#' \code{randomY=TRUE}, the standard error of the outcome-specific random
-#' intercept (one per outcome); (9) the parameters of each parameterized link
-#' function: 2 for "linear", 4 for "beta", n+2 for "splines" with n nodes.
+#' outcome for which the parameter is not estimated but deduced from the others;
+#' (6) the variance of each random-effect specified in random 
+#' (excepted the first one, usually the intercept, which is constrained to 1) 
+#' if idiag=TRUE and the inferior triangular variance-covariance matrix of all 
+#' the random-effects if idiag=FALSE;
+#' (7) if \code{cor} is specified, the standard error of the Brownian motion or 
+#' the standard error and the correlation parameter of the autoregressive process;
+#' (8) parameters of each measurement model: 2 for "linear", 4 for "beta", 
+#' n+2 for "splines" with n nodes, n for "thresholds" for a (n+1)-level outcome; 
+#' (9) if \code{randomY=TRUE}, the standard 
+#' error of the outcome-specific random intercept (one per outcome); 
+#' (10) the outcome-specific standard errors (one per outcome)
+#' 
+#' 
 #' 
 #' C. CAUTIONS REGARDING THE USE OF THE PROGRAM
 #' 
@@ -85,37 +141,21 @@
 #' very strict as they are based on the derivatives of the log-likelihood in
 #' addition to the parameter and log-likelihood stability. In some cases, the
 #' program may not converge and reach the maximum number of iterations fixed at
-#' 100. In this case, the user should check that parameter estimates at the
+#' 100 by default. In this case, the user should check that parameter estimates at the
 #' last iteration are not on the boundaries of the parameter space.
 #' 
 #' If the parameters are on the boundaries of the parameter space, the
 #' identifiability of the model is critical. This may happen especially with
-#' splines parameters that may be too close to 0 (lower boundary) or classmb
-#' parameters that are too high or low (perfect classification). When
+#' splines parameters that may be too close to 0 (lower boundary). When
 #' identifiability of some parameters is suspected, the program can be run
 #' again from the former estimates by fixing the suspected parameters to their
 #' value with option posfix. This usually solves the problem. An alternative is
 #' to remove the parameters of the Beta of Splines link function from the
-#' inverse of the Hessian with option partialH.
+#' inverse of the Hessian with option partialH. If not, the program should be 
+#' run again with other initial values, with a higher maximum number of iterations 
+#' or less strict convergence tolerances.
 #' 
-#' If not, the program should be run again with other initial values, with a
-#' higher maximum number of iterations or less strict convergence tolerances.
 #' 
-#' Specifically when investigating heterogeneity (that is with ng>1): (1) As
-#' the log-likelihood of a latent class model can have multiple maxima, a
-#' careful choice of the initial values is crucial for ensuring convergence
-#' toward the global maximum. The program can be run without entering the
-#' vector of initial values (see point 2). However, we recommend to
-#' systematically enter initial values in \code{B} and try different sets of
-#' initial values. (2) The automatic choice of initial values we provide
-#' requires the estimation of a preliminary linear mixed model. The user should
-#' be aware that first, this preliminary analysis can take time for large
-#' datatsets and second, that the generated initial values can be very not
-#' likely and even may converge slowly to a local maximum. This is the reason
-#' why several alternatives exist. The vector of initial values can be directly
-#' specified in \code{B} the initial values can be generated (automatically or
-#' randomly) from a model with \code{ng=}. Finally, function \code{gridsearch}
-#' performs an automatic grid search.
 #' 
 #' @param fixed a two-sided linear formula object for specifying the
 #' fixed-effects in the linear mixed model at the latent process level. The
@@ -127,8 +167,7 @@
 #' @param random an optional one-sided formula for the random-effects in the
 #' latent process mixed model. At least one random effect should be included
 #' for identifiability purposes. Covariates with a random-effect are separated
-#' by \code{+}. By default, an intercept is included. If no intercept,
-#' \code{-1} should be the first term included.
+#' by \code{+}. An intercept should always be included for identifiability.
 #' @param subject name of the covariate representing the grouping structure.
 #' @param idiag optional logical for the variance-covariance structure of the
 #' random-effects. If \code{FALSE}, a non structured matrix of
@@ -141,11 +180,12 @@
 #' @param link optional vector of families of parameterized link functions to
 #' estimate (one by outcome). Option "linear" (by default) specifies a linear
 #' link function. Other possibilities include "beta" for estimating a link
-#' function from the family of Beta cumulative distribution functions and
-#' "Splines" for approximating the link function by I-splines. For this latter
-#' case, the number of nodes and the nodes location should be also specified.
-#' The number of nodes is first entered followed by \code{-}, then the location
-#' is specified with "equi", "quant" or "manual" for respectively equidistant
+#' function from the family of Beta cumulative distribution functions, "Splines" 
+#' for approximating the link function by I-splines and "thresholds" for ordinal
+#' outcomes modelled by cumulative probit models. For splines case, the number of 
+#' nodes and the nodes location should be also specified. The number of nodes is 
+#' first entered followed by \code{-}, then the location is specified with "equi", 
+#' "quant" or "manual" for respectively equidistant
 #' nodes, nodes at quantiles of the marker distribution or interior nodes
 #' entered manually in argument \code{intnodes}. It is followed by \code{-} and
 #' finally "splines" is indicated.  For example, "7-equi-splines" means
@@ -164,19 +204,50 @@
 #' and correlation intensity. Each option should be followed by the time
 #' variable in brackets as \code{cor=BM(time)}. By default, no autocorrelated
 #' Gaussian process is added.
-#' @param data data frame containing the variables named in \code{fixed},
-#' \code{mixture}, \code{random}, \code{classmb} and \code{subject}.
+#' @param survival two-sided formula object. The left side of the formula corresponds 
+#' to a surv() object of type "counting" for right-censored and left-truncated 
+#' data (example: Surv(Time,EntryTime,Indicator)) or of type "right" for right-censored 
+#' data (example: Surv(Time,Indicator)). Multiple causes of event can be considered 
+#' in the Indicator (0 for censored, k for cause k of event). The right side of the 
+#' formula specifies the names of covariates to include in the survival model with 
+#' mixture() when the effect is class-specific (example: Surv(Time,Indicator) ~ X1 
+#' + mixture(X2) for a class-common effect of X1 and a class-specific effect of X2). 
+#' In the presence of competing events, covariate effects are common by default. 
+#' Code cause(X3) specifies a cause-specific covariate effect for X3 on each cause 
+#' of event while cause1(X3) (or cause2(X3), ...) specifies a cause-specific effect 
+#' of X3 on the first (or second, ...) cause only.
+#' @param hazard optional family of hazard function assumed for the survival model. 
+#' By default, "Weibull" specifies a Weibull baseline risk function. Other possibilities 
+#' are "piecewise" for a piecewise constant risk function or "splines" for a cubic M-splines 
+#' baseline risk function. For these two latter families, the number of nodes and the 
+#' location of the nodes should be specified as well, separated by -. The number of 
+#' nodes is entered first followed by -, then the location is specified with "equi", 
+#' "quant" or "manual" for respectively equidistant nodes, nodes at quantiles of the 
+#' times of event distribution or interior nodes entered manually in argument hazardnodes. 
+#' It is followed by - and finally "piecewise" or "splines" indicates the family of 
+#' baseline risk function considered. Examples include "5-equi-splines" for M-splines 
+#' with 5 equidistant nodes, "6-quant-piecewise" for piecewise constant risk over 5 
+#' intervals and nodes defined at the quantiles of the times of events distribution 
+#' and "9-manual-splines" for M-splines risk function with 9 nodes, the vector of 7 
+#' interior nodes being entered in the argument hazardnodes. In the presence of competing 
+#' events, a vector of hazards should be provided such as hazard=c("Weibull","splines" 
+#' with 2 causes of event, the first one modelled by a Weibull baseline cause-specific 
+#' risk function and the second one by splines.
+#' @param hazardtype optional indicator for the type of baseline risk function when 
+#' ng>1. By default "Specific" indicates a class-specific baseline risk function. 
+#' Other possibilities are "PH" for a baseline risk function proportional in each 
+#' latent class, and "Common" for a baseline risk function that is common over classes. 
+#' In the presence of competing events, a vector of hazardtypes should be given.
+#' @param hazardnodes optional vector containing interior nodes if splines or piecewise 
+#' is specified for the baseline hazard function in hazard.
+#' @param hazardrange optional vector indicating the range of the survival times 
+#' (that is the minimum and maximum). By default, the range is defined according 
+#' to the minimum and maximum observed values of the survival times. The option 
+#' should be used only for piecewise constant and Splines hazard functions.
+#' @param data data frame containing all variables named in \code{fixed},
+#'  \code{random}, \code{cor}, \code{survival} and \code{subject}.
 #' @param B optional specification for the initial values for the parameters.
-#' Three options are allowed: (1) a vector of initial values is entered (the
-#' order in which the parameters are included is detailed in \code{details}
-#' section).  (2) nothing is specified. A preliminary analysis involving the
-#' estimation of a standard linear mixed model is performed to choose initial
-#' values.  (3) when ng>1, a multlcmm object is entered. It should correspond
-#' to the exact same structure of model but with ng=1. The program will
-#' automatically generate initial values from this model. This specification
-#' avoids the preliminary analysis indicated in (2) Note that due to possible
-#' local maxima, the \code{B} vector should be specified and several different
-#' starting points should be tried.
+#' Initial values should be entered in the order detailed in \code{details} section.
 #' @param convB optional threshold for the convergence criterion based on the
 #' parameter stability. By default, convB=0.0001.
 #' @param convL optional threshold for the convergence criterion based on the
@@ -206,64 +277,98 @@
 #' reported. Default to TRUE.
 #' @param returndata logical indicating if data used for computation should be
 #' returned. Default to FALSE, data are not returned.
-#' @param methInteg character indicating the type of integration if ordinal outcomes
-#' are considered. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
-#' 'QMC' for quasi MonteCarlo.
-#' @param nMC integer, number of Monte Carlo simulations
+#' @param methInteg character indicating the type of integration to compute the
+#' log-likelihood. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
+#' 'QMC' for quasi Monte Carlo. Default to "QMC".
+#' @param nMC integer, number of Monte Carlo simulations. Default to 1000.
 #' @param sharedtype indicator of shared random function type : 1 for gi(bi,t)=bi, 
 #' 2 for gi(bi,t)=predicted current level of latent process
-#' @param var.time name of the time variable 
-#' @return The list returned is: \item{ns}{number of grouping units in the
-#' dataset} \item{ng}{number of latent classes} \item{loglik}{log-likelihood of
-#' the model} \item{best}{vector of parameter estimates in the same order as
-#' specified in \code{B} and detailed in section \code{details}}
+#' @param var.time name of the variable representing the measurement times.
+#' 
+#' @return A list is returned containing some internal information used in related
+#' functions. Users may investigate the following elements : 
+#' \item{ns}{number of grouping units in the dataset} 
+#' \item{loglik}{log-likelihood of the model} 
+#' \item{best}{vector of parameter estimates in the same order as specified in 
+#' \code{B} and detailed in section \code{details}}
 #' \item{V}{vector containing the upper triangle matrix of variance-covariance
 #' estimates of \code{Best} with exception for variance-covariance parameters
 #' of the random-effects for which \code{V} contains the variance-covariance
-#' estimates of the Cholesky transformed parameters displayed in
-#' \code{cholesky}} \item{gconv}{vector of convergence criteria: 1. on the
-#' parameters, 2. on the likelihood, 3. on the derivatives} \item{conv}{status
-#' of convergence: =1 if the convergence criteria were satisfied, =2 if the
-#' maximum number of iterations was reached, =4 or 5 if a problem occured
-#' during optimisation} \item{call}{the matched call} \item{niter}{number of
-#' Marquardt iterations} \item{N}{internal information used in related
-#' functions} \item{idiag}{internal information used in related functions}
+#' estimates of the Cholesky transformed parameters displayed in \code{cholesky}} 
+#' \item{gconv}{vector of convergence criteria: 1. on the parameters, 2. on the 
+#' likelihood, 3. on the derivatives} 
+#' \item{conv}{status of convergence: =1 if the convergence criteria were satisfied, 
+#' =2 if the maximum number of iterations was reached, =4 or 5 if a problem occured 
+#' during optimisation} 
+#' \item{call}{the matched call} 
+#' \item{niter}{number of Marquardt iterations} 
+#' \item{nevent}{number of occured event}
 #' \item{pred}{table of individual predictions and residuals in the underlying
 #' latent process scale; it includes marginal predictions (pred_m), marginal
 #' residuals (resid_m), subject-specific predictions (pred_ss) and
-#' subject-specific residuals (resid_ss) averaged over classes, the transformed
-#' observations in the latent process scale (obs) and finally the
-#' class-specific marginal and subject-specific predictions (with the number of
-#' the latent class: pred_m_1,pred_m_2,...,pred_ss_1,pred_ss_2,...).}
-#' \item{pprob}{table of posterior classification and posterior individual
-#' class-membership probabilities} \item{Xnames}{list of covariates included in
-#' the model} \item{predRE}{table containing individual predictions of the
-#' random-effects : a column per random-effect, a line per subject.}
+#' subject-specific residuals (resid_ss) and finally the transformed
+#' observations in the latent process scale (obs).}
+#' \item{predRE}{table containing individual predictions of the random-effects : 
+#' a column per random-effect, a line per subject.}
+#' \item{predRE_Y}{table containing individual predictions of the outcome-specific
+#' random intercept}
+#' \item{predSurv}{table containing the predicted baseline risk function and
+#' the predicted cumulative baseline risk function }
 #' \item{cholesky}{vector containing the estimates of the Cholesky transformed
 #' parameters of the variance-covariance matrix of the random-effects}
 #' \item{estimlink}{table containing the simulated values of each outcome and
-#' the corresponding estimated link function} \item{epsY}{definite positive
-#' reals used to rescale the markers in (0,1) when the beta link function is
-#' used. By default, epsY=0.5.} \item{linktype}{indicators of link function
-#' types: 0 for linear, 1 for beta, 2 for splines and 3 for thresholds}
-#' \item{linknodes}{vector of nodes useful only for the 'splines' link
-#' functions} \item{data}{the original data set (if returndata is TRUE)}
-#' %% idea0,idprob0,idg0,idcontr0,idcor0,Xnames2,na.action,pred_RE_Y,Ynames,nbnodes
-#' @author Viviane Philipps and Cecile Proust-Lima
-#' @seealso
-#' 
-#' \code{\link{multlcmm}}, \code{\link{Jointlcmm}}
+#' the corresponding estimated link function} 
+#' \item{epsY}{definite positive reals used to rescale the markers in (0,1) when 
+#' the beta link function is used. By default, epsY=0.5.} 
+#' \item{AIC}{the Akaike's information criterion}
+#' \item{BIC}{the Bayesian information criterion}
+#' \item{CPUtime}{the runtime in seconds}
+#' \item{data}{the original data set (if returndata is TRUE)}
+#' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 
 #' @references
-#' Proust-Lima, Amieva, Jacqmin-Gadda (2013). Analysis of multivariate mixed
-#' longitudinal data: A flexible latent process approach. Br J Math Stat
-#' Psychol 66(3): 470-87.
+#' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2021).
+#' Joint models for the longitudinal analysis of measurement scales in the presence 
+#' of informative dropout   arXiv:2110.02612
+#' 
 #' @examples
-#'
+#' #### Examples with paquid data from R-package lcmm
+#' library(lcmm)
+#' paq <- paquid[which(paquid$age_init<paquid$agedem),]
+#' paq$age65 <- (paq$age-65)/10
+#' 
+#' ## Estimation with one Gaussian marker
+#' \dontrun{
+#' M1 <- jointLPM(fixed = IST~age65*(male+CEP),
+#'                 random=~age65,
+#'                 idiag=FALSE,
+#'                 subject="ID",
+#'                 link="linear",
+#'                 survival=Surv(age_init,agedem,dem)~male,
+#'                 sharedtype=1,
+#'                 hazard="Weibull",
+#'                 data=paq,
+#'                 var.time="age65")
+#' summary(M1)}
+#' 
+#' #### Estimation with one ordinal marker
+#' \dontrun{
+#' M2 <- jointLPM(fixed = HIER~age65*male,
+#'                 random = ~age65,
+#'                 subject = "ID", 
+#'                 link = "thresholds",
+#'                 survival = Surv(age_init,agedem,dem)~male,
+#'                 sharedtype = 2,
+#'                 var.time = "age65",
+#'                 data = paq, 
+#'                 methInteg = "QMC", 
+#'                 nMC = 1000)
+#' summary(M2)}
+#' 
 #' @export
 #' 
 jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
-                survival=NULL,hazard="Weibull",hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
+                survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
@@ -286,11 +391,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(!is.numeric(data[,subject])) stop("The argument subject must be numeric")
     if(all(link %in% c("linear","beta","thresholds")) & !is.null(intnodes)) stop("Intnodes should only be specified with splines links")
     if(!(na.action%in%c(1,2)))stop("only 1 for 'na.omit' or 2 for 'na.fail' are required in na.action argument")
-    if(!(sharedtype%in%c(1,2)))stop("The value of argument sharedtype must be 1 (bi) or 2 (latent process current level)") # TS
+    if(!(sharedtype%in%c(1,2)))stop("The value of argument sharedtype must be 1 (for shared random effects) or 2 (for shared latent process current level)") # TS
     if(missing(var.time) | length(var.time)!=1)stop("The argument var.time is missing or is not of length 1")
     if(!(var.time %in% colnames(data))) stop("Unable to find variable 'var.time' in 'data'")
-    if(sharedtype == 2 & missing(cor)==FALSE) print("wi not computed on current level prediction 'cause considered not shared")
-    if(sharedtype == 2 & missing(TimeDepVar)==FALSE) stop("model with current level shared effect and time dependent effect on survival not yet programmed")
+    if(sharedtype == 2 & missing(cor)==FALSE) print("WARNING : wi not computed on current level prediction 'cause considered not shared")
+    if(sharedtype == 2 & missing(TimeDepVar)==FALSE) stop("model with sharedtype=2 not yet programmed with time dependent effect on survival")
     
     #    if(length(posfix) & missing(B)) stop("A set of initial parameters must be specified if some parameters are not estimated")
     
@@ -878,7 +983,6 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(any(hazard %in% c("splines","Splines")))
     {
         hazard[which(hazard %in% c("splines","Splines"))] <- "5-quant-splines"
-        if(sharedtype == 2) stop("option hazard=splines & sharedtype=2 not programmed yet")
     }
     if(any(hazard %in% c("piecewise","Piecewise")))
     {
@@ -961,6 +1065,13 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(maxT1>maxT2) maxT2 <- maxT2+0.001
     maxT <- maxT2
     
+    if(length(hazardrange)){
+      if(hazardrange[1]>minT) stop(paste("hazardrange[1] should be <=",minT))
+      if(hazardrange[2]>maxT) stop(paste("hazardrange[2] should be >=",maxT))
+      minT <- hazardrange[1]
+      maxT <- hazardrange[2]
+    }
+    
     startWeib <- rep(0,nbevt)
     startWeib[which(typrisq==2)] <- rep(startWeibull, length.out=length(which(typrisq==2)))
     ii <- 0
@@ -996,24 +1107,22 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     
     
-    #print("code ajoute")
-    
     ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
     if(sharedtype == 1){  #gi(bi,t)=bi
-        Xpred <- 0 #NULL
-        Xpred_Ti <- 0 #NULL
-        nbXpred <- 0 #NULL
+        Xpred <- 0
+        Xpred_Ti <- 0
+        nbXpred <- 0
     }
     if(sharedtype == 2){   #gi(bi,t)=niv.courant(t)
         
-        # si varexp dependante du tps (autre que var.time), prediction impossible
+        # /!\ si varexp dependante du tps (autre que var.time), prediction impossible
         nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
-        nom.var <- nom.var[!str_detect(nom.var,var.time)]  # noms des variables, autre que celle incluant var.time
+        nom.var <- nom.var[!str_detect(nom.var,var.time)] # nom.var[!(nom.var == var.time)] # noms des variables, autre que celle incluant var.time
         if(length(nom.var)>0){
             for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
                 tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
                 if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
-                    stop(paste(nom.var[v]," seems to be time dependant, can't use sharedtype=2 in this case 'cause impossible to predict"))
+                    stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype=2 due to impossibility to predict"))
             }  
         }
         
@@ -1024,9 +1133,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         colnames(data_tmp) <- c(subject,nom.var)
         data_tmp$tmp_name <- NA
         colnames(data_tmp)[which(colnames(data_tmp) == "tmp_name")] <- var.time
-
         if(nrow(data_tmp)!=length(unique(IND))) stop("Make sure at least 1 visit per subject has complete data")  # si un sujet a un valeur NA a 1 covar a chq visit, alors il n'est plus pris en compte
-        if(nrow(data_tmp)!=length(tsurv)) stop("pblm")  #meme ordre ?
+        if(nrow(data_tmp)!=length(tsurv)) stop("pblm")
         
         # Xpredcl_vectTi (Ti event) vecteur par patient
         data_tmp[,var.time] <- tsurv # remplacer la variable de temps par T
@@ -1088,24 +1196,6 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         nbXpred <- c(nbXpred, ncol(Xpred))
         
     }
-    
-    # print("fin code ajoute")
-    
-    # print("Xpredcl_vectTi")
-    # print(head(Xpredcl_vectTi))
-    # print("Xpredcl")
-    # print(head(Xpredcl))
-    # if(idtrunc==1){
-    #   print("Xpredcl0")
-    #   print(head(Xpredcl0))
-    # }
-    # print("Xpred_Ti")
-    # print(dim(Xpred_Ti))
-    # print(head(Xpred_Ti))
-    # print("Xpred")
-    # print(dim(Xpred))
-    # print(head(Xpred))
-    
     
     
     ##parametres pour Fortran
@@ -1240,6 +1330,15 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                 for(i in 1:nbevt){
                     if(typrisq[i]==2){
                         b[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- 1
+                        if(idtrunc==1 & any(Tentry==0)) #TS : si entree retardee et au moins un temps vaut 0
+                          b[sum(nprisq[1:i])-nprisq[i]+nprisq[i]] <- 1.25 #sinon pblm lors de recherche prms, risq instant tend vers infini qd w2 < 1 et t=0
+                    }
+                }
+            }
+            if(any(hazard %in% c("splines","Splines")) & idtrunc==1 & any(Tentry==0)){
+                for(i in 1:nbevt){
+                    if(typrisq[i]==3){
+                        b[sum(nprisq[1:i])-nprisq[i]+1:nprisq[i]] <- 10^-7 #sinon pgrm crash
                     }
                 }
             }
@@ -1499,18 +1598,6 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     ###estimation
     
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
-    
-    # print(paste("sharedtype = ",sharedtype,sep=""))  #TS
-    # print("nbXpred = ")
-    # print(nbXpred)
-    # print("Xpred_Ti = ")
-    # print(dim(Xpred_Ti))
-    # print(head(Xpred_Ti))
-    # print("Xpred = ")
-    # print(dim(Xpred))
-    # print(head(Xpred))
-    # print("b = ")
-    # print(b)
 
     out <- .Fortran(C_irtsre,
                     as.double(Y0),
@@ -1578,8 +1665,10 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                     as.integer(nbXpred),
                     as.double(Xpred_Ti),
                     as.double(Xpred))
+
     #}
     
+   
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
     {

@@ -12,6 +12,7 @@ module modirtsre
   double precision,dimension(:),allocatable,save::Y,uniqueY,minY,maxY,rangeY
   double precision,dimension(:,:),allocatable,save ::X,zi
   double precision,dimension(:),allocatable,save::Tsurv0,Tsurv,Tsurvint
+  double precision,dimension(:,:),allocatable,save::Tsurv0_st2,Tsurv_st2
   integer,dimension(:),allocatable,save::Devt,ind_survint
   integer,dimension(:),allocatable,save::idtdv,idsurv
   integer,dimension(:),allocatable,save::idea,idg,idcor,idcontr,indiceY
@@ -26,17 +27,20 @@ module modirtsre
        Tmm2,Tmm3,Tim,Tim1,Tim2,Tim3,Tmm0,Tmm01,Tmm02,Tmm03,Tim0, &
        Tim01,Tim02,Tim03,Tmmt,Tmmt1,Tmmt2,Tmmt3,Timt,Timt1,&
        Timt2,Timt3
+  double precision,dimension(:,:),allocatable,save::Tmm_st2,Tmm1_st2,&
+       Tmm2_st2,Tmm3_st2,Tim_st2,Tim1_st2,Tim2_st2,Tim3_st2,Tmm0_st2,&
+       Tmm01_st2,Tmm02_st2,Tmm03_st2,Tim0_st2,Tim01_st2,Tim02_st2,Tim03_st2
 !  double precision,dimension(:),allocatable,save::Tmm_est,Tmm1_est &
 !       ,Tmm2_est,Tmm3_est,Tim_est,Tim1_est,Tim2_est,Tim3_est
   double precision,dimension(:),allocatable,save::brisq_est
   !  double precision,save::vrais_surv
   integer,dimension(:),allocatable,save::fix
   double precision,dimension(:),allocatable,save::bfix
-  integer,save::idst          !TS
-  integer,dimension(2),save::nXcl          !TS
-  integer,dimension(2),save::id_nXcl  !TS
-  double precision,dimension(:,:),allocatable,save::Xcl_Ti,Xcl_GK,Xcl0_GK  !TS
-
+  integer,save::idst        
+  integer,dimension(2),save::nXcl        
+  integer,dimension(2),save::id_nXcl 
+  double precision,dimension(:,:),allocatable,save::Xcl_Ti,Xcl_GK,Xcl0_GK 
+  
 end module modirtsre
 
 
@@ -80,8 +84,8 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   double precision,dimension(3),intent(in)::conv3
   integer,dimension(npmtot0),intent(in)::pbH0,fix0
   double precision,dimension(dimMC0*nMC0),intent(in)::seqMC0
-  integer,intent(in)::idst0    !TS
-  integer,dimension(2),intent(in)::nXcl0    !TS
+  integer,intent(in)::idst0   
+  integer,dimension(2),intent(in)::nXcl0   
   double precision,dimension(ns0,nXcl0(1)),intent(in)::Xcl_Ti0 
   double precision,dimension(15*ns0,nXcl0(2)),intent(in)::Xcl_GK0
 
@@ -102,7 +106,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   integer, intent(out)::ni,istop
 
   !Variables locales
-  integer::jtemp,i,j,npm,ier,k,ktemp,yk,k1,k2,mi,nbfix
+  integer::jtemp,i,j,npm,ier,k,ktemp,yk,k1,k2,mi,nbfix,p
   integer::ke,sumnrisq,it
   double precision::eps,ca,cb,dd
   double precision,dimension(npmtot0)::mvc,b
@@ -246,6 +250,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
        ,indiceY(nobs0))
 
   allocate(Tsurv0(ns0),Tsurv(ns0),Tsurvint(ns0),ind_survint(ns0),Devt(ns0))
+  allocate(Tsurv0_st2(ns0,15),Tsurv_st2(ns0,15))
   allocate(typrisq(nbevt0),nz(nbevt0),nprisq(nbevt0),nevtparx(nv0),nxcurr(nv0))
   allocate(idsurv(nv0),idtdv(nv0))
 
@@ -256,7 +261,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      allocate(zi(maxval(nz0),nbevt0))
   end if
   
-  allocate(Xcl_Ti(ns0,nXcl0(1)),Xcl_GK(15*ns0,nXcl0(1)),Xcl0_GK(15*ns0,nXcl0(1)))   !TS
+  allocate(Xcl_Ti(ns0,nXcl0(1)),Xcl_GK(15*ns0,nXcl0(1)),Xcl0_GK(15*ns0,nXcl0(1)))
 
 
   eps=1.d-20
@@ -278,13 +283,22 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   ncor=ncor0
   nalea=nalea0
   idiag=idiag0
-  idst=idst0   !TS
+  idst=idst0  
   nXcl=nXcl0
   Xcl_Ti=Xcl_Ti0
   Xcl_GK=Xcl_GK0(:,1:nXcl(1))
   if (idtrunc.eq.1) then
     Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
   end if
+  do i=1,ns0  
+    do p=1,15
+      Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
+      if (idtrunc.eq.1) then
+        Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
+      end if
+    end do
+  end do
+  
   
   !     if (verbose==1) write(*,*)'ntotvalSPL',ntotvalSPL
 
@@ -333,9 +347,9 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   end do
           ! write(*,*)'X k:',X(1:50,2)
           
-  id_nXcl(1)=sum(idg)-1 !TS !sans intercept
-  id_nXcl(2)=sum(idea) !TS
-  !write(*,*)'id_nXcl',id_nXcl !TS      
+  id_nXcl(1)=sum(idg)-1 !sans intercept
+  id_nXcl(2)=sum(idea) 
+  !write(*,*)'id_nXcl',id_nXcl       
 
   ! definition Tsurvint 
   nvdepsurv=0
@@ -421,7 +435,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   end do
   nef = nef - 1 !intercept pas estime
 
-  nasso = nbevt*nea  !TS: here
+  nasso = nbevt*nea
   if (idst.eq.2) then
     nasso = nbevt
   end if
@@ -487,7 +501,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
         bfix(k)=btot(j)
      end if
   end do
-
+  
   allocate(pbH(npm))
   k=0
   do j=1,npmtot
@@ -502,15 +516,21 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
 
   ! creer base de splines si au moins un hazard splines
   if(any(typrisq.eq.3)) then
-     allocate(Tmm(ns*nbevt),Tmm1(ns*nbevt),Tmm2(ns*nbevt),Tmm3(ns*nbevt),Tim(ns*nbevt)         &
-          ,Tim1(ns*nbevt),Tim2(ns*nbevt),Tim3(ns*nbevt),Tmm0(ns*nbevt),Tmm01(ns*nbevt),Tmm02(ns*nbevt)  &
-          ,Tmm03(ns*nbevt),Tim0(ns*nbevt),Tim01(ns*nbevt),Tim02(ns*nbevt),Tim03(ns*nbevt),          &
-          Tmmt(ns*nbevt),Tmmt1(ns*nbevt),Tmmt2(ns*nbevt),Tmmt3(ns*nbevt),Timt(ns*nbevt),Timt1(ns*nbevt) &
-          ,Timt2(ns*nbevt),Timt3(ns*nbevt))
+     allocate(Tmm(ns*nbevt),Tmm1(ns*nbevt),Tmm2(ns*nbevt),Tmm3(ns*nbevt),        &
+              Tim(ns*nbevt),Tim1(ns*nbevt),Tim2(ns*nbevt),Tim3(ns*nbevt),        &
+              Tmm0(ns*nbevt),Tmm01(ns*nbevt),Tmm02(ns*nbevt),Tmm03(ns*nbevt),    &
+              Tim0(ns*nbevt),Tim01(ns*nbevt),Tim02(ns*nbevt),Tim03(ns*nbevt),    &
+              Tmmt(ns*nbevt),Tmmt1(ns*nbevt),Tmmt2(ns*nbevt),Tmmt3(ns*nbevt),    &
+              Timt(ns*nbevt),Timt1(ns*nbevt),Timt2(ns*nbevt),Timt3(ns*nbevt),    &
+              Tmm_st2(15,ns*nbevt),Tmm1_st2(15,ns*nbevt),Tmm2_st2(15,ns*nbevt),Tmm3_st2(15,ns*nbevt),        &
+              Tmm0_st2(15,ns*nbevt),Tmm01_st2(15,ns*nbevt),Tmm02_st2(15,ns*nbevt),Tmm03_st2(15,ns*nbevt))
+              !Tim_st2(15,ns*nbevt),Tim1_st2(15,ns*nbevt),Tim2_st2(15,ns*nbevt),Tim3_st2(15,ns*nbevt),        &
+              !Tim0_st2(15,ns*nbevt),Tim01_st2(15,ns*nbevt),Tim02_st2(15,ns*nbevt),Tim03_st2(15,ns*nbevt))
 
      do ke=1,nbevt
         if(typrisq(ke).eq.3) then
            call splines_irtsre(ke)
+           call splines_irtsre2(ke)
         end if
      end do
 
@@ -597,7 +617,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
               end do
            end if
               
-           call fct_risq_estime_irtsre(ke,brisq_est,time,nsim0,risq_est,risqcum_est)  !TS: revoir cette fonction !!
+           call fct_risq_estime_irtsre(ke,brisq_est,time,nsim0,risq_est,risqcum_est)
 
            sumnrisq = sumnrisq + nprisq(ke)
         end do
@@ -621,10 +641,15 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   if (any(typrisq.eq.3)) then
      deallocate(Tmm,Tmm1,Tmm2,Tmm3,Tim,Tim1,Tim2,Tim3,Tmm0,    &
           Tmm01,Tmm02,Tmm03,Tim0,Tim01,Tim02,Tim03,Tmmt,Tmmt1,     &
-          Tmmt2,Tmmt3,Timt,Timt1,Timt2,Timt3)
+          Tmmt2,Tmmt3,Timt,Timt1,Timt2,Timt3,    &
+          Tmm_st2,Tmm1_st2,Tmm2_st2,Tmm3_st2,    &   
+          Tmm0_st2,Tmm01_st2,Tmm02_st2,Tmm03_st2)
+          !Tim_st2,Tim1_st2,Tim2_st2,Tim3_st2,
+          !Tim0_st2,Tim01_st2,Tim02_st2,Tim03_st2)
   endif
 
   deallocate(Tsurv0,Tsurv,Tsurvint &
+       ,Tsurv0_st2, Tsurv_st2 & 
        ,ind_survint,zi,devt,typrisq,nz,nprisq,idsurv,idtdv &
        ,nevtparx,nxcurr)
 
@@ -635,8 +660,8 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
 
   deallocate(fix,bfix,pbH,seqMC)
 
-  deallocate(Xcl_Ti,Xcl_GK,Xcl0_GK) ! TS
-
+  deallocate(Xcl_Ti,Xcl_GK,Xcl0_GK) 
+  
   !write(*,*)'fin'
   return
 end subroutine irtsre
@@ -674,8 +699,8 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   double precision,dimension(nxevt)::Xevt,bevt
   double precision,dimension(nbevt)::bevtint
   double precision,dimension(maxval(nprisq))::brisq
-  double precision::basso !TS
-  double precision,dimension(nef)::beta_ef !TS
+  double precision::basso 
+  double precision,dimension(nef)::beta_ef 
 
   double precision :: eps,det,som,thi,thj,eta0
   double precision ::Y4,jacobien,beta_densite,ytemp
@@ -690,8 +715,9 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   double precision::SX,x22,div,vrais_Y,vrais_surv,varexpsurv
   double precision::surv0_glob,surv_glob,fevt,easurv
   double precision,external::alnorm
-  double precision::pred_cl_Ti !TS
-
+  double precision::pred_cl_Ti 
+  double precision::som_T0,som_Ti
+  
   ! definir le nombre total de mesures pour le sujet i : nmestot (valable que pour cette fonction)
 
   ! if (verbose==1) write(*,*)'i',i 
@@ -699,7 +725,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   !if(i==1 .and. id==0 .and. jd==0) then
   !print*, "b=",b   
   !end if
-
+  
   b1=0.d0
   eps=1.D-20
   l=0
@@ -750,8 +776,8 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
      end if
 
   end if
-
-
+  
+  
   vrais_Y=0.d0
   jacobien=0.d0
   ! -------- creation de Vi = ZiGZi'+se*seIni ----------
@@ -763,7 +789,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
      if (idea(k).eq.1) then
         l=l+1
         do j=1,sum(nmes(i,:))
-           Z(j,l)=dble(X(nmescur+j,k))   !TS:erreur compilation
+           Z(j,l)=dble(X(nmescur+j,k))  
         end do
      end if
   end do
@@ -829,7 +855,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
         do j=1,nmes(i,yk)
            Y1(sumMesYk+j)=(dble(Y(nmescur+sumMesYk+j))-b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+1)) &
                 /abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+2))
-
+            
            jacobien = jacobien - log(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+2))
         end do
 
@@ -996,10 +1022,10 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   end do
 
   som=0.d0
+  som_T0=0.d0 !delayed entry
+  som_Ti=0.d0
   do l=1,nMC
-
-     !write(*,*)'iteration l=',l  !TS
-
+  
      vrais_Y=1.d0
      mu=0.d0
 
@@ -1247,8 +1273,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               Y3=matmul(VC,Y2)
               Y4=DOT_PRODUCT(Y2,Y3)
               
-              div = (dble(2*3.14159265)**(dble(nmes(i,yk))/2.d0))*sqrt(exp(det))
-              
+              div = (dble(2*3.14159265)**(dble(nmes(i,yk))/2))*sqrt(exp(det))
               vrais_Y = vrais_Y * exp(-Y4/2.d0)/div
 
            end if
@@ -1282,20 +1307,17 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
                  brisq(k)=b1(sumnrisq+k)*b1(sumnrisq+k)
               end do
            end if
-           !write(*,*)'brisq=',brisq !TS
            
            basso=0.d0 
            basso=b1(nrisqtot+nvarxevt+ke) !basso = eta = prm estime des EAs partages
-           !write(*,*)'basso=',basso !TS
            
            beta_ef=0.d0 
            beta_ef=b1(nrisqtot+nvarxevt+ke) !beta_ef = prms des EFs necessaires pr pred curlev
            do k=1,nef
               beta_ef(k) = b1(nrisqtot+nvarxevt+nasso+k)
            end do
-           !write(*,*)'beta_ef=',beta_ef !TS
-
-           if (idst.eq.1) then  !bi        !TS: HERE
+           
+           if (idst.eq.1) then  !bi       
               call fct_risq_irtsre(i,ke,brisq,risq,surv,surv0,survint)  
            else if(idst.eq.2) then   !niv.courant du processus latent
               call fct_risq_irtsre_2(i,ke,brisq,basso,beta_ef,ui,risq,surv,surv0)  
@@ -1361,8 +1383,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               varexpsurv=DOT_PRODUCT(Xevt((nxevtcurr+1):(nxevtcurr+nxevt))&
                    ,bevt((nxevtcurr+1):(nxevtcurr+nxevt)))
            end if
-           !write(*,*)'varexpsurv',varexpsurv !TS
-
+           
            ! effets aleatoires partages 
            if (idst.eq.1) then
             easurv=0.d0
@@ -1385,8 +1406,6 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
                 do ll=1,id_nXcl(2)
                   pred_cl_Ti = pred_cl_Ti + Xcl_Ti(i,1+nef+ll) * ui(ll)  ! Z(t) %*% ui
                 end do
-                !write(*,*)'prediction du niv courant au tps Ti',pred_cl_Ti !TS
-                !write(*,*)'ui',ui
                 
                 pred_cl_Ti = EXP(pred_cl_Ti*b1(nrisqtot+nvarxevt+ke) )  ! exp(predcl*basso)
                 fevt=risq(ke)*exp(varexpsurv)*pred_cl_Ti
@@ -1396,8 +1415,6 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               end if
            end if
            
-           !write(*,*)'fct de risq au tps Ti',fevt !TS
-
            ! risque cumule jusque Ti
            if (idst.eq.1) then
             Surv_glob=surv_glob + survint(ke)*exp(varexpsurv+easurv) + &
@@ -1406,8 +1423,6 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
             Surv_glob=surv_glob + surv(ke)*exp(varexpsurv)
            end if
            
-           !write(*,*)'risq cumule calcule par quadrature GK',Surv_glob !TS
-            
            ! troncature : risque cumule au temps T0
            if (idtrunc.eq.1) then
             if (idst.eq.1) then
@@ -1423,35 +1438,37 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
         ! vraisemblance de la partie survie
         vrais_surv = exp(-Surv_glob)
         
-        !write(*,*)'fct de survie au tps Ti',vrais_surv !TS
-
         if(Devt(i).eq.1) vrais_surv = vrais_surv * fevt
 
         if (idtrunc.eq.1) then
-           vrais_surv = vrais_surv / exp(-surv0_glob)
+           !vrais_surv = vrais_surv / exp(-surv0_glob)
+           som_T0 = som_T0 + exp(-surv0_glob)   !delayed entry
         end if
         
-        !write(*,*)'partie survie ds vraisemblance',vrais_surv !TS
-
+        som_Ti = som_Ti + vrais_surv
+        
         ! vrais totale 
         som = som + vrais_Y * vrais_surv
-        
-        !write(*,*)'vrais_Y',vrais_Y  !TS
-        !write(*,*)'vrais_surv',vrais_surv  !TS
 
      else !  pas de survie
 
         som = som + vrais_Y
 
      end if
-
+     
      !if(l.lt.4) print*,"l=", l, " som=",som
   end do ! fin boucle nMC
   
   vrais_irtsre_i = vrais_irtsre_i + log(som) - log(dble(nMC)) + jacobien
-  !print*,"i=",i," vrais_Y=",vrais_Y,"jac=",jacobien," vrais_surv=",vrais_surv," vrais_irtsre_i=",vrais_irtsre_i
-  ! print*,"vrais_irtsre_i=",vrais_irtsre_i
-654 continue
+  
+  if (idtrunc.eq.1) then    !delayedentry
+      vrais_irtsre_i = vrais_irtsre_i - log(som_T0) + log(dble(nMC))
+  end if  
+  
+  !print*,"i=",i,"som_Ti=",som_Ti,"som_T0=",som_T0," vrais_irtsre_i=",vrais_irtsre_i
+  
+  !print*,"i=",i,"som=",som," vrais_Y=",vrais_Y,"jac=",jacobien," vrais_surv=",vrais_surv," vrais_irtsre_i=",vrais_irtsre_i
+  654 continue
 
   return
 
@@ -1471,15 +1488,18 @@ double precision function vrais_irtsre(b,m,id,thi,jd,thj)
   integer::m,i,id,jd
   double precision::thi,thj,vrais_irtsre_i,temp
   double precision,dimension(m)::b
+  
+  !print*,"##### NEW LOOP" 
+  !print*,"b=",b,"id=",id,"thi=",thi,"jd=",jd,"thj=",thj 
 
   nmescur=0
   vrais_irtsre=0.d0
   do i=1,ns
+  
+     !print*,"## NEW SUBJECT i=",i 
+  
+     temp=vrais_irtsre_i(b,m,id,thi,jd,thj,i)  
      
-     !write(*,*)'##########'
-     !write(*,*)'SUJET_i=',i  !TS
-     
-     temp=vrais_irtsre_i(b,m,id,thi,jd,thj,i)          
      vrais_irtsre = vrais_irtsre + temp
      if (temp.eq.-1.d9 .or. temp/temp.ne.1) then 
         !if (temp/temp.ne.1) write(*,*)"i=",i,"vrais= ",temp
@@ -1491,6 +1511,7 @@ double precision function vrais_irtsre(b,m,id,thi,jd,thj)
      end if
      nmescur = nmescur + sum(nmes(i,:))
   end do
+  
 541 continue
   return
 
@@ -1631,14 +1652,13 @@ subroutine splines_irtsre(k)
   Timt2=0.d0
   Timt3=0.d0
 
-
   zi(-2,k)=zi(1,k)
   zi(-1,k)=zi(1,k)
   zi(0,k)=zi(1,k)
   zi(nz(k)+1,k)=zi(nz(k),k)
   zi(nz(k)+2,k)=zi(nz(k),k)
   zi(nz(k)+3,k)=zi(nz(k),k)
-
+  
 
   n=nz(k)+2
   !------------------- Tsurv ---------------------------
@@ -1841,6 +1861,174 @@ end subroutine splines_irtsre
 
 
 
+!bases de splines pr les 15 noeuds de la quadrature de GaussKronrod
+subroutine splines_irtsre2(k)
+  use modirtsre
+  implicit none
+
+  integer::k
+  integer::i,kk,n,l
+  integer::p 
+  double precision::ht,htm,h2t,ht2,ht3,hht,h,hh,h2,h3,h4,h3m,h2n, &
+       hn,hh2,hh3
+
+
+
+  l=0
+  Tmm_st2=0.d0  !OK pr matrix ?
+  Tmm1_st2=0.d0
+  Tmm2_st2=0.d0
+  Tmm3_st2=0.d0
+  !Tim_st2=0.d0
+  !Tim1_st2=0.d0
+  !Tim2_st2=0.d0
+  !Tim3_st2=0.d0
+  Tmm0_st2=0.d0
+  Tmm01_st2=0.d0
+  Tmm02_st2=0.d0
+  Tmm03_st2=0.d0
+  !Tim0_st2=0.d0
+  !Tim01_st2=0.d0
+  !Tim02_st2=0.d0
+  !Tim03_st2=0.d0
+
+  !zi deja mis en forme a l etape avec splines_irtsre
+
+  n=nz(k)+2
+  !------------------- Tsurv ---------------------------
+  Do i=1,ns
+  
+    do p=1,15
+
+     do kk=2,n-2
+        if ((Tsurv_st2(i,p).ge.zi(kk-1,k)).and.  &
+             Tsurv_st2(i,p).lt.zi(kk,k)) then
+           l=kk-1
+        end if
+     end do
+
+     if (Tsurv_st2(i,p).eq.zi(n-2,k)) then
+        l=n-3
+     end if
+
+     ht = Tsurv_st2(i,p)-zi(l,k)
+     htm = Tsurv_st2(i,p)-zi(l-1,k)
+     h2t = Tsurv_st2(i,p)-zi(l+2,k)
+     ht2 = zi(l+1,k)-Tsurv_st2(i,p)
+     ht3 = zi(l+3,k)-Tsurv_st2(i,p)
+     hht = Tsurv_st2(i,p)-zi(l-2,k)
+     h = zi(l+1,k)-zi(l,k)
+     hh = zi(l+1,k)-zi(l-1,k)
+     h2 = zi(l+2,k)-zi(l,k)
+     h3 = zi(l+3,k)-zi(l,k)
+     h4 = zi(l+4,k)-zi(l,k)
+     h3m = zi(l+3,k)-zi(l-1,k)
+     h2n = zi(l+2,k)-zi(l-1,k)
+     hn = zi(l+1,k)-zi(l-2,k)
+     hh3 = zi(l+1,k)-zi(l-3,k)
+     hh2 = zi(l+2,k)-zi(l-2,k)
+
+     if (Tsurv_st2(i,p).ne.zi(n-2,k)) then
+
+        Tmm3_st2(p,ns*(k-1)+i) = ((4.d0*ht2*ht2*ht2)/(h*hh*hn*hh3))
+        Tmm2_st2(p,ns*(k-1)+i) = ((4.d0*hht*ht2*ht2)/(hh2*hh*h*hn))  &
+             +((-4.d0*h2t*htm*ht2)/(hh2*h2n*hh*h))  &
+             +((4.d0*h2t*h2t*ht)/(hh2*h2*h*h2n))
+        Tmm1_st2(p,ns*(k-1)+i) = (4.d0*(htm*htm*ht2)/(h3m*h2n*hh*h)) &
+             +((-4.d0*htm*ht*h2t)/(h3m*h2*h*h2n))   &
+             +((4.d0*ht3*ht*ht)/(h3m*h3*h2*h))
+        Tmm_st2(p,ns*(k-1)+i) = 4.d0*(ht*ht*ht)/(h4*h3*h2*h)
+
+     end if
+
+     if (Tsurv_st2(i,p).eq.zi(n-2,k)) then
+
+        Tmm3_st2(p,ns*(k-1)+i) = 0.d0
+        Tmm2_st2(p,ns*(k-1)+i) = 0.d0
+        Tmm1_st2(p,ns*(k-1)+i) = 0.d0
+        Tmm_st2(p,ns*(k-1)+i) = 4.d0/h
+
+     end if
+
+     !Tim3_st2(p,ns*(k-1)+i) = (0.25d0*(Tsurv_st2(i,p)-zi(l-3,k))*Tmm3_st2(p,ns*(k-1)+i)) &
+    !      +(0.25d0*hh2*Tmm2_st2(p,ns*(k-1)+i))        &
+    !      +(0.25d0*h3m*Tmm1_st2(p,ns*(k-1)+i))+(0.25d0*h4*Tmm_st2(p,ns*(k-1)+i))
+     !Tim2_st2(p,ns*(k-1)+i) = (0.25d0*hht*Tmm2_st2(p,ns*(k-1)+i))  &
+    !      +(h3m*Tmm1_st2(p,ns*(k-1)+i)*0.25d0)+(h4*Tmm_st2(p,ns*(k-1)+i)*0.25d0)
+    ! Tim1_st2(p,ns*(k-1)+i) = (htm*Tmm1_st2(p,ns*(k-1)+i)*0.25d0)+(h4*Tmm_st2(p,ns*(k-1)+i)*0.25d0)
+     !Tim_st2(p,ns*(k-1)+i) = ht*Tmm_st2(p,ns*(k-1)+i)*0.25d0
+
+     !------------------- Tsurv0 --------------------------
+
+     if (idtrunc.eq.1) then
+
+        do kk=2,n-2
+           if ((Tsurv0_st2(i,p).ge.zi(kk-1,k)).and.   &
+                Tsurv0_st2(i,p).lt.zi(kk,k)) then
+              l=kk-1
+           end if
+        end do
+
+        if (Tsurv0_st2(i,p).eq.zi(n-2,k)) then
+           l=n-3
+        end if
+
+        ht = Tsurv0_st2(i,p)-zi(l,k)
+        htm = Tsurv0_st2(i,p)-zi(l-1,k)
+        h2t = Tsurv0_st2(i,p)-zi(l+2,k)
+        ht2 = zi(l+1,k)-Tsurv0_st2(i,p)
+        ht3 = zi(l+3,k)-Tsurv0_st2(i,p)
+        hht = Tsurv0_st2(i,p)-zi(l-2,k)
+        h = zi(l+1,k)-zi(l,k)
+        hh = zi(l+1,k)-zi(l-1,k)
+        h2 = zi(l+2,k)-zi(l,k)
+        h3 = zi(l+3,k)-zi(l,k)
+        h4 = zi(l+4,k)-zi(l,k)
+        h3m = zi(l+3,k)-zi(l-1,k)
+        h2n = zi(l+2,k)-zi(l-1,k)
+        hn = zi(l+1,k)-zi(l-2,k)
+        hh3 = zi(l+1,k)-zi(l-3,k)
+        hh2 = zi(l+2,k)-zi(l-2,k)
+
+        if (Tsurv0_st2(i,p).ne.zi(nz(k)-2,k)) then
+
+           Tmm03_st2(p,ns*(k-1)+i) = ((4.d0*ht2*ht2*ht2)/(h*hh*hn*hh3))
+
+           Tmm02_st2(p,ns*(k-1)+i) = ((4.d0*hht*ht2*ht2)/(hh2*hh*h*hn))  &
+                +((-4.d0*h2t*htm*ht2)/(hh2*h2n*hh*h))   &
+                +((4.d0*h2t*h2t*ht)/(hh2*h2*h*h2n))
+           Tmm01_st2(p,ns*(k-1)+i) = (4.d0*(htm*htm*ht2)/(h3m*h2n*hh*h)) &
+                +((-4.d0*htm*ht*h2t)/(h3m*h2*h*h2n))    &
+                +((4.d0*ht3*ht*ht)/(h3m*h3*h2*h))
+           Tmm0_st2(p,ns*(k-1)+i) = 4.d0*(ht*ht*ht)/(h4*h3*h2*h)
+
+        end if
+
+        if (Tsurv0_st2(i,p).eq.zi(n-2,k)) then
+
+           Tmm03_st2(p,ns*(k-1)+i) = 0.d0
+           Tmm02_st2(p,ns*(k-1)+i) = 0.d0
+           Tmm01_st2(p,ns*(k-1)+i) = 0.d0
+           Tmm0_st2(p,ns*(k-1)+i) = 4.d0/h
+
+        end if
+
+        !Tim03_st2(p,ns*(k-1)+i) = (0.25d0*(Tsurv0_st2(i,p)-zi(l-3,k))*Tmm03_st2(p,ns*(k-1)+i))  &
+        !     +(0.25d0*hh2*Tmm02_st2(p,ns*(k-1)+i))           &
+        !     +(0.25d0*h3m*Tmm01_st2(p,ns*(k-1)+i))+(0.25d0*h4*Tmm0_st2(p,ns*(k-1)+i))
+        !Tim02_st2(p,ns*(k-1)+i) = (0.25d0*hht*Tmm02_st2(p,ns*(k-1)+i))                  &
+        !     +(h3m*Tmm01_st2(p,ns*(k-1)+i)*0.25d0)+(h4*Tmm0_st2(p,ns*(k-1)+i)*0.25d0)
+        !Tim01_st2(p,ns*(k-1)+i) = (htm*Tmm01_st2(p,ns*(k-1)+i)*0.25d0)+(h4*Tmm0_st2(p,ns*(k-1)+i)*0.25d0)
+        !Tim0_st2(p,ns*(k-1)+i) = ht*Tmm0_st2(p,ns*(k-1)+i)*0.25d0
+
+     end if
+     
+    end do !end p
+
+  end Do !end i
+
+end subroutine splines_irtsre2
+
 
 
 subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
@@ -1858,7 +2046,7 @@ subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
   
   if (typrisq(k).eq.2.and.logspecif.eq.1) then
      
-     surv(k)=brisq(1)*(tsurv(i)-zi(1,k))**brisq(2)      !TS: zi(1,k)=depart Weibull
+     surv(k)=brisq(1)*(tsurv(i)-zi(1,k))**brisq(2)      !zi(1,k)=depart Weibull
      
      risq(k)=brisq(1)*brisq(2)*(tsurv(i)-zi(1,k))**(brisq(2)-1)
      if (idtrunc.eq.1) then
@@ -2013,19 +2201,14 @@ subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
 end subroutine fct_risq_irtsre
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!! HERE : TS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 !!! fct du risq de base : renvoit une valeur
-
-double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg)  !t time, i subject, k event, brisq prm de base, arg = 1 pr event ou 2 pr entry
+double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg,p)  !t time, i subject, k event, brisq prm de base, arg = 1 pr event ou 2 pr entry
 
   use modirtsre
         
   implicit none
   
-  integer::i,k,arg
+  integer::i,k,arg,p
   double precision::t,risq
   double precision,dimension(nprisq(k))::brisq
   
@@ -2035,7 +2218,7 @@ double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg)  !t time, i su
 
   if (typrisq(k).eq.2.and.logspecif.eq.1) then     !Weibull & exponentiel
      
-     risq=brisq(1)*brisq(2)*(t-zi(1,k))**(brisq(2)-1)   !fct risq base au tps t  #TS: pq tsurv(i)-zi(1,k) ? zi(1,k)=depart Weibull
+     risq=brisq(1)*brisq(2)*(t-zi(1,k))**(brisq(2)-1)   !fct risq base au tps t, pq tsurv(i)-zi(1,k) ? zi(1,k)=depart Weibull
      
   end if
   
@@ -2065,13 +2248,24 @@ double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg)  !t time, i su
         end if
      end do
 
-     if (arg.eq.1) then
-      risq=brisq(ll)*Tmm3(ns*(k-1)+i)+brisq(ll+1)*Tmm2(ns*(k-1)+i)     &
+     if(p.eq.0) then
+        if (arg.eq.1) then
+          risq=brisq(ll)*Tmm3(ns*(k-1)+i)+brisq(ll+1)*Tmm2(ns*(k-1)+i)     &
             +brisq(ll+2)*Tmm1(ns*(k-1)+i)+brisq(ll+3)*Tmm(ns*(k-1)+i)
-     else if (arg.eq.2) then
-      risq=brisq(ll)*Tmm03(ns*(k-1)+i)+brisq(ll+1)*Tmm02(ns*(k-1)+i)     &
+        else if (arg.eq.2) then
+          risq=brisq(ll)*Tmm03(ns*(k-1)+i)+brisq(ll+1)*Tmm02(ns*(k-1)+i)     &
             +brisq(ll+2)*Tmm01(ns*(k-1)+i)+brisq(ll+3)*Tmm0(ns*(k-1)+i)
+        end if
+     else
+        if (arg.eq.1) then
+          risq=brisq(ll)*Tmm3_st2(p,ns*(k-1)+i)+brisq(ll+1)*Tmm2_st2(p,ns*(k-1)+i)     &
+            +brisq(ll+2)*Tmm1_st2(p,ns*(k-1)+i)+brisq(ll+3)*Tmm_st2(p,ns*(k-1)+i)
+        else if (arg.eq.2) then
+          risq=brisq(ll)*Tmm03_st2(p,ns*(k-1)+i)+brisq(ll+1)*Tmm02_st2(p,ns*(k-1)+i)     &
+            +brisq(ll+2)*Tmm01_st2(p,ns*(k-1)+i)+brisq(ll+3)*Tmm0_st2(p,ns*(k-1)+i)
+        end if
      end if
+     
   end if
   
   
@@ -2128,8 +2322,7 @@ end subroutine fct_pred_curlev_irtsre_2
 
 
 
-! fct calculant risq de base au tps event et risq cumul? (sans varexp) par quadrature de Konrod
-
+! fct calculant risq de base au tps event et risq cumule (sans varexp) par quadrature de Konrod
 subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
 
   use modirtsre
@@ -2139,14 +2332,14 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   integer::i,k,g
   double precision,dimension(nprisq(k))::brisq
   double precision,dimension(nbevt)::risq,surv,surv0
-  double precision::basso !TS
-  double precision,dimension(nef)::beta_ef !TS
-  double precision,dimension(nea)::ui !TS
+  double precision::basso
+  double precision,dimension(nef)::beta_ef
+  double precision,dimension(nea)::ui
   
   integer::j,l,ll,kk,ii
   double precision::som
   
-  integer::p  !TS
+  integer::p
   double precision,dimension(8)::wgk
   double precision,dimension(15)::wgk_15
   double precision::hlgth_event,hlgth_entry
@@ -2182,20 +2375,19 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
     hlgth_entry=0.5d+00*Tsurv0(i)
   end if
   
-  !!! risque de base au tps d event
-  risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1) !TS: dernier argument = 1 pr event ou 2 pr entry (necessaire pr base de splines !=)  ! here : revoir bases de splines car dependent des tps de quadrature
-  !write(*,*)'risq de base au temps Ti=',risq(k) !TS
+  !!! risque de base au tps d event Ti
+  risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)
+  
   
   !!! risque cumule par quadrature de Kronrod
   
   !risque de base aux differents tps de quadrature
   do p = 1,15
-    risq_GK_event(p) = fct_risq_base_irtsre_2(Xcl_GK((i-1)*15+p,1),i,k,brisq,1)
+    risq_GK_event(p) = fct_risq_base_irtsre_2(Xcl_GK((i-1)*15+p,1),i,k,brisq,1,p)
     if (idtrunc.eq.1) then
-      risq_GK_entry(p) = fct_risq_base_irtsre_2(Xcl0_GK((i-1)*15+p,1),i,k,brisq,2)
+      risq_GK_entry(p) = fct_risq_base_irtsre_2(Xcl0_GK((i-1)*15+p,1),i,k,brisq,2,p)
     end if
   end do
-  !write(*,*)'risq de base aux tps de quadrature=',risq_GK_event !TS
   
   !prediction niveau courant du processus a chq pnt de quadrature
   call fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)
@@ -2203,16 +2395,15 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   if (idtrunc.eq.1) then
     pred_GK_entry = pred_GK(2,:)
   end if
-  !write(*,*)'predictions du niv courant aux tps de quadrature',pred_GK_event !TS
   
-  !multiplication par prm estime et passage ? l'exponentiel a chq pnt de quadrature
+  !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
   pred_GK_event = EXP(pred_GK_event*basso)
   if (idtrunc.eq.1) then
     pred_GK_entry = EXP(pred_GK_entry*basso)
   end if
 
   !produit des 2 vecteurs
-  fct_pred_surv = risq_GK_event * pred_GK_event !TS: produit de 2 vecteurs
+  fct_pred_surv = risq_GK_event * pred_GK_event !produit de 2 vecteurs
   if (idtrunc.eq.1) then
     fct_pred_surv0 = risq_GK_entry * pred_GK_entry
   end if
@@ -2233,15 +2424,14 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
     surv0(k) = SUM(fct_pred_surv0_pond)
   end if
 
-  !multiplier par hlgth -> resultat de l integral
+  !multiplier par hlgth -> resultat de l integral = risq cumule (sans varexp)
   surv(k) = surv(k) * hlgth_event
   if (idtrunc.eq.1) then
     surv0(k) = surv0(k) * hlgth_entry
   else
     surv0(k) = 0
   end if
-  !write(*,*)'valeur risq cumule (sans varexp) par quadrature GK',surv(k) !TS
-
+  
 end subroutine fct_risq_irtsre_2
 
 
@@ -2552,6 +2742,7 @@ end subroutine transfos_estimees_irtsre
 
 !!! pour calculer les esperances de vie !!!
 !! -> on se sert de la fonction de vraisemblance, eventuellement seulement sur une partie des items, et avec expectancy=1
+!! !TS: pas modif pr niv courant partage
 
 
 subroutine proba_irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
@@ -2867,7 +3058,7 @@ subroutine proba_irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   nef = nef - 1 !intercept pas estime
 
   if (idst.eq.1) then
-    nasso = nbevt*nea    !TS : here
+    nasso = nbevt*nea
   else if (idst.eq.2) then
     nasso = nbevt
   end if  
@@ -2980,6 +3171,7 @@ subroutine proba_irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      deallocate(Tmm,Tmm1,Tmm2,Tmm3,Tim,Tim1,Tim2,Tim3,Tmm0,    &
           Tmm01,Tmm02,Tmm03,Tim0,Tim01,Tim02,Tim03,Tmmt,Tmmt1,     &
           Tmmt2,Tmmt3,Timt,Timt1,Timt2,Timt3)
+  
   endif
 
   deallocate(Tsurv0,Tsurv,Tsurvint &

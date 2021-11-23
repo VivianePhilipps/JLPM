@@ -1,6 +1,6 @@
 #' Joint latent process models
 #' 
-#' Functions for the estimation of joint latent processes models (JLPM)
+#' Functions for the estimation of joint latent process models (JLPM)
 #' 
 #' @name JLPM-package
 #' @docType package
