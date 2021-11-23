@@ -5,7 +5,7 @@
 \alias{JLPM-package}
 \title{Joint latent process models}
 \description{
-Functions for the estimation of joint latent processes models (JLPM)
+Functions for the estimation of joint latent process models (JLPM)
 }
 \references{
 
