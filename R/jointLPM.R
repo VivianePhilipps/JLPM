@@ -211,9 +211,8 @@
 #' in the Indicator (0 for censored, k for cause k of event). The right side of the 
 #' formula specifies the names of covariates to include in the survival model(example: 
 #' Surv(Time,Indicator) ~ X1 for an effect of X1). 
-#' Code cause(X3) specifies a cause-specific covariate effect for X3 on each cause 
-#' of event while cause1(X3) (or cause2(X3), ...) specifies a cause-specific effect 
-#' of X3 on the first (or second, ...) cause only.
+#' Code cause(X1) specifies a cause-specific covariate effect for X1 on each cause 
+#' of event.
 #' @param hazard optional family of hazard function assumed for the survival model. 
 #' By default, "Weibull" specifies a Weibull baseline risk function. Other possibilities 
 #' are "piecewise" for a piecewise constant risk function or "splines" for a cubic M-splines 
@@ -1077,7 +1076,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     {
         if(typrisq[i]==2)
         {
-            if(minT < startWeibull[i]) stop("Some entry or event times are bellow startWeibull")
+            if(minT < startWeib[i]) stop("Some entry or event times are bellow startWeibull")
             zi[1:2,i] <- c(startWeib[i],maxT)
         }
         else
@@ -1242,7 +1241,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if (ncor>0) idcor <- colnames(X0) %in% cor.var.time +0
     else idcor <- rep(0,nv)
     
-    idsurv <- z.X0 %in% z.surv + z.X0 %in% z.survcause
+    idsurv <- z.X0 %in% z.surv + 2*(z.X0 %in% z.survcause)
     idsurv[1] <- 0 # 0 pour l'intercept
     
     idtdv <- z.X0 %in% nom.timedepvar + 0
