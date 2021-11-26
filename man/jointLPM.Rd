@@ -137,6 +137,21 @@ should be used only for piecewise constant and Splines hazard functions.}
 \item{hazardnodes}{optional vector containing interior nodes if splines or piecewise 
 is specified for the baseline hazard function in hazard.}
 
+\item{TimeDepVar}{optional vector containing an intermediate time
+corresponding to a change in the risk of event. This time-dependent
+covariate can only take the form of a time variable with the assumption that
+there is no effect on the risk before this time and a constant effect on the
+risk of event after this time (example: initiation of a treatment to account
+for).}
+
+\item{logscale}{optional boolean indicating whether an exponential
+(logscale=TRUE) or a square (logscale=FALSE -by default) transformation is
+used to ensure positivity of parameters in the baseline risk functions. See
+details section}
+
+\item{startWeibull}{optional numeric with Weibull hazard functions only.
+Indicates the shift in the Weibull distribution.}
+
 \item{sharedtype}{indicator of shared random function type : 1 for gi(bi,t)=bi, 
 2 for gi(bi,t)=predicted current level of latent process}
 
@@ -192,12 +207,6 @@ reported. Default to TRUE.}
 
 \item{returndata}{logical indicating if data used for computation should be
 returned. Default to FALSE, data are not returned.}
-
-\item{hazardtype}{optional indicator for the type of baseline risk function when 
-ng>1. By default "Specific" indicates a class-specific baseline risk function. 
-Other possibilities are "PH" for a baseline risk function proportional in each 
-latent class, and "Common" for a baseline risk function that is common over classes. 
-In the presence of competing events, a vector of hazardtypes should be given.}
 }
 \value{
 A list is returned containing some internal information used in related

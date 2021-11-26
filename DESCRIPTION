@@ -1,11 +1,11 @@
 Package: JLPM
 Type: Package
-Title: Joint latent process models
+Title: Joint Latent Process Models
 Version: 1.0
-Date: 2021-04-27
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
+Date: 2021-11-26
+Author: Viviane Philipps, Tiphaine Saulnier, Cecile Proust-Lima
+Maintainer: Viviane Philipps <Viviane.Philipps@u-bordeaux.fr> 
+Description: Estimation of extented joint models with shared random effects. Longitudinal data are handled in latent process models for continuous (Gaussian or curvilinear) and ordinal outcomes while proportional hazard models are used for the survival part. We propose a frequentist approach using maximum likelihood estimation.
 License: GPL (>= 2.0)
 Depends: R (>= 2.14.0), survival (>= 2.37-2), randtoolbox, stringr
 Suggests: lcmm

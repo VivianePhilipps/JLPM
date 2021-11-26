@@ -230,13 +230,20 @@
 #' events, a vector of hazards should be provided such as hazard=c("Weibull","splines" 
 #' with 2 causes of event, the first one modelled by a Weibull baseline cause-specific 
 #' risk function and the second one by splines.
-#' @param hazardtype optional indicator for the type of baseline risk function when 
-#' ng>1. By default "Specific" indicates a class-specific baseline risk function. 
-#' Other possibilities are "PH" for a baseline risk function proportional in each 
-#' latent class, and "Common" for a baseline risk function that is common over classes. 
-#' In the presence of competing events, a vector of hazardtypes should be given.
 #' @param hazardnodes optional vector containing interior nodes if splines or piecewise 
 #' is specified for the baseline hazard function in hazard.
+#' @param TimeDepVar optional vector containing an intermediate time
+#' corresponding to a change in the risk of event. This time-dependent
+#' covariate can only take the form of a time variable with the assumption that
+#' there is no effect on the risk before this time and a constant effect on the
+#' risk of event after this time (example: initiation of a treatment to account
+#' for).
+#' @param logscale optional boolean indicating whether an exponential
+#' (logscale=TRUE) or a square (logscale=FALSE -by default) transformation is
+#' used to ensure positivity of parameters in the baseline risk functions. See
+#' details section
+#' @param startWeibull optional numeric with Weibull hazard functions only.
+#' Indicates the shift in the Weibull distribution.
 #' @param hazardrange optional vector indicating the range of the survival times 
 #' (that is the minimum and maximum). By default, the range is defined according 
 #' to the minimum and maximum observed values of the survival times. The option 
@@ -1294,21 +1301,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     
     
-    
-    ## gestion de B=random(mod)
-    
-    Brandom <- FALSE
-    if(length(cl$B)==2)
-    {
-        if(class(eval(cl$B[[2]]))!="multlcmm") stop("The model specified in B should be of class multlcmm")
-        if(as.character(cl$B[1])!="random") stop("Please use random() to specify random initial values")
-        
-        Brandom <- TRUE
-        B <- eval(cl$B[[2]])
-        
-        if(length(posfix)) stop("Argument posfix is not compatible with random intial values")
-    }
-    
+
     ###valeurs initiales
     if(!(missing(B)))
     {
@@ -1787,7 +1780,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     {
         if(any(2*nbmod[which(idlink==3)] > nsim))
         {
-            nsim2 <- maxval(2*nbmod[which(idlink==3)])
+            nsim2 <- max(2*nbmod[which(idlink==3)])
             
             estimlink2 <- matrix(NA, nrow=nsim2, ncol=2*ny)
             estimlink2[1:nsim,] <- estimlink
