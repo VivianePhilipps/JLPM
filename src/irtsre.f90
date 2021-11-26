@@ -3148,7 +3148,7 @@ subroutine proba_irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   if (any(idlink.eq.2)) then 
      call design_splines_irtsre(ier)
      if (ier.eq.-1) then
-        proba=99
+        proba=-1.d9
         go to 1589
      end if
   end if
