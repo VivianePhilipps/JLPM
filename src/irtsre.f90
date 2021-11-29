@@ -1438,7 +1438,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
         ! vraisemblance de la partie survie
         vrais_surv = exp(-Surv_glob)
         
-        if(Devt(i).eq.1) vrais_surv = vrais_surv * fevt
+        if(Devt(i).gt.0) vrais_surv = vrais_surv * fevt
 
         if (idtrunc.eq.1) then
            !vrais_surv = vrais_surv / exp(-surv0_glob)
