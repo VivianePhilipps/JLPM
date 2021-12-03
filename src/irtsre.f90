@@ -260,7 +260,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   else
      allocate(zi(maxval(nz0),nbevt0))
   end if
-  
+
   allocate(Xcl_Ti(ns0,nXcl0(1)),Xcl_GK(15*ns0,nXcl0(1)),Xcl0_GK(15*ns0,nXcl0(1)))
 
 

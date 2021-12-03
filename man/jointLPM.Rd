@@ -39,7 +39,11 @@ jointLPM(
   nsim = 100,
   range = NULL,
   verbose = TRUE,
-  returndata = FALSE
+  returndata = FALSE,
+  mla = 1,
+  nproc = 1,
+  clustertype = NULL,
+  .packages = NULL
 )
 }
 \arguments{
@@ -207,6 +211,10 @@ reported. Default to TRUE.}
 
 \item{returndata}{logical indicating if data used for computation should be
 returned. Default to FALSE, data are not returned.}
+
+\item{mla}{should the R function mla be used to optimize?}
+
+\item{nproc}{number of cores for paralle computation (if mla>0 only)}
 }
 \value{
 A list is returned containing some internal information used in related

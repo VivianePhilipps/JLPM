@@ -6,6 +6,7 @@
 static R_FortranMethodDef FortRout[] = {
   {"irtsre", (DL_FUNC) &F77_SUB(irtsre), 65},
   {"proba_irtsre", (DL_FUNC) &F77_SUB(proba_irtsre), 41},
+  {"loglik1", (DL_FUNC) &F77_SUB(loglik1), 48},
   {NULL, NULL, 0}
 };
 

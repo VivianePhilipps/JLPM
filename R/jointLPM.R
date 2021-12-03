@@ -288,6 +288,8 @@
 #' @param sharedtype indicator of shared random function type : 1 for gi(bi,t)=bi, 
 #' 2 for gi(bi,t)=predicted current level of latent process
 #' @param var.time name of the variable representing the measurement times.
+#' @param mla should the R function mla be used to optimize?
+#' @param nproc number of cores for paralle computation (if mla>0 only)
 #' 
 #' @return A list is returned containing some internal information used in related
 #' functions. Users may investigate the following elements : 
@@ -375,7 +377,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                 survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
-                nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
+                nsim=100,range=NULL,verbose=TRUE,returndata=FALSE,
+                mla=1, nproc=1, clustertype=NULL, .packages=NULL)
 {
     ptm <- proc.time()
     if(verbose==TRUE) cat("Be patient, jointLPM is running ... \n")
@@ -1589,6 +1592,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
 
+    if(mla==0){
     out <- .Fortran(C_irtsre,
                     as.double(Y0),
                     as.double(X0),
@@ -1657,7 +1661,74 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                     as.double(Xpred))
 
     #}
-    
+    } else {
+        if(any(pbH>0)) stop("partialH is not supported with mla optimization")
+
+        if(nvc!=0)
+        {
+            mvc <- matrix(0,nea,nea)
+            if(idiag0==0)
+            {
+                mvc[upper.tri(mvc, diag=TRUE)] <- c(1,b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+                mvc <- t(mvc)
+                mvc[upper.tri(mvc, diag=TRUE)] <- c(1,b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+                ch <- chol(mvc)
+
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- ch[upper.tri(ch, diag=TRUE)][-1]
+            }
+            else
+            {
+                b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- sqrt(b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+            }            
+        }
+
+        nfix <- sum(fix)
+        bfix <- 0
+        if(nfix>0)
+        {
+            bfix <- b[which(fix==1)]
+            b <- b[which(fix==0)]
+            NPM <- NPM-nfix
+        }
+
+        
+        if(maxiter==0)
+        {
+            vrais <- loglik1(b,Y0,X0,tsurv0,tsurv,devt,ind_survint,idea,idg,idcor,idcontr,
+                             idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
+                             nobs,nea,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
+                             idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
+                             methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred)
+            
+            out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
+                        Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
+                        marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
+        }
+        else
+        {   
+            res <- mla(b=b, m=length(b), fn=loglik1,
+                       clustertype=clustertype,.packages=NULL,
+                       epsa=convB,epsb=convL,epsd=convG,
+                       digits=8,print.info=verbose,blinding=FALSE,
+                       multipleTry=25,file="",
+                       nproc=nproc,maxiter=maxiter,minimize=FALSE,
+                       Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
+                       ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
+                       idcontr0=idcontr,idsurv0=idsurv,idtdv0=idtdv,typrisq0=typrisq,
+                       nz0=nz,zi0=zi,nbevt0=nbevt,idtrunc0=idtrunc,logspecif0=logspecif,
+                       ny0=ny,ns0=ns,nv0=nv,nobs0=nobs,nea0=nea,nmes0=nmes,idiag0=idiag0,
+                       ncor0=ncor,nalea0=nalea,npm0=NPM,nfix0=nfix,bfix0=bfix,
+                       epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
+                       uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
+                       fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
+                       idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
+
+            out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                        resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
+                        transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
+                        loglik=res$fn.value)
+        }
+    }
    
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
@@ -1895,3 +1966,15 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     return(res)
 }
 
+
+
+#'@export
+loglik1 <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
+                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
+                    nv0,nobs0,nea0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
+                    epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,nvalSPLORD0,fix0,
+                    methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0)
+{
+    res <- 0
+    .Fortran(C_loglik1,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nea0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),loglik=as.double(res))$loglik
+}
