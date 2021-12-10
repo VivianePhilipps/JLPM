@@ -18,6 +18,7 @@
 #' @importFrom randtoolbox sobol
 #' @importFrom stringr str_detect
 #' @importFrom parallel clusterEvalQ clusterExport clusterSetRNGStream makeCluster parApply stopCluster
+#' @importFrom marqLevAlg mla
 #' @useDynLib JLPM, .registration=TRUE, .fixes="C_"
 NULL
 

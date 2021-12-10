@@ -1662,7 +1662,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 
     #}
     } else {
-        if(any(pbH>0)) stop("partialH is not supported with mla optimization")
+        if(partialH) stop("partialH is not supported with mla optimization")
 
         if(nvc!=0)
         {
@@ -1691,42 +1691,142 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
             NPM <- NPM-nfix
         }
 
-        
-        if(maxiter==0)
+        if(mla==1)
         {
-            vrais <- loglik1(b,Y0,X0,tsurv0,tsurv,devt,ind_survint,idea,idg,idcor,idcontr,
-                             idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
-                             nobs,nea,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
-                             idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
-                             methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred)
-            
-            out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
-                        Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
-                        marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
+            if(maxiter==0)
+            {
+                vrais <- loglik1(b,Y0,X0,tsurv0,tsurv,devt,ind_survint,idea,idg,idcor,idcontr,
+                                 idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
+                                 nobs,nea,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
+                                 idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
+                                 methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred)
+                
+                out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
+                            Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
+                            marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
+            }
+            else
+            {   
+                res <- mla(b=b, m=length(b), fn=loglik1,
+                           clustertype=clustertype,.packages=NULL,
+                           epsa=convB,epsb=convL,epsd=convG,
+                           digits=8,print.info=verbose,blinding=FALSE,
+                           multipleTry=25,file="",
+                           nproc=nproc,maxiter=maxiter,minimize=FALSE,
+                           Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
+                           ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
+                           idcontr0=idcontr,idsurv0=idsurv,idtdv0=idtdv,typrisq0=typrisq,
+                           nz0=nz,zi0=zi,nbevt0=nbevt,idtrunc0=idtrunc,logspecif0=logspecif,
+                           ny0=ny,ns0=ns,nv0=nv,nobs0=nobs,nea0=nea,nmes0=nmes,idiag0=idiag0,
+                           ncor0=ncor,nalea0=nalea,npm0=NPM,nfix0=nfix,bfix0=bfix,
+                           epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
+                           uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
+                           fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
+                           idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
+
+                out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                            resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
+                            transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
+                            loglik=res$fn.value)
+            }
         }
         else
-        {   
-            res <- mla(b=b, m=length(b), fn=loglik1,
-                       clustertype=clustertype,.packages=NULL,
-                       epsa=convB,epsb=convL,epsd=convG,
-                       digits=8,print.info=verbose,blinding=FALSE,
-                       multipleTry=25,file="",
-                       nproc=nproc,maxiter=maxiter,minimize=FALSE,
-                       Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
-                       ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
-                       idcontr0=idcontr,idsurv0=idsurv,idtdv0=idtdv,typrisq0=typrisq,
-                       nz0=nz,zi0=zi,nbevt0=nbevt,idtrunc0=idtrunc,logspecif0=logspecif,
-                       ny0=ny,ns0=ns,nv0=nv,nobs0=nobs,nea0=nea,nmes0=nmes,idiag0=idiag0,
-                       ncor0=ncor,nalea0=nalea,npm0=NPM,nfix0=nfix,bfix0=bfix,
-                       epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
-                       uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
-                       fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
-                       idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
+        {
+            if(mla==2)
+            {
+                nparam <- c(nrisqtot,nvarxevt,nasso,nef,ncontr,nvc,ncor,ntrtot,nalea,ny)
+                nxevt <- sum(idsurv>0)
+                nvalORD <- nbmod[which(idlink==3)]
+                ntotvalSPL <- sum(nvalSPLORD[which(idlink==2)])
+                Tmm_st2 <- rep(0,4*15*ns*nbevt) # a revoir 
+                Tmm0_st2 <- rep(0,4*15*ns*nbevt) # a revoir
 
-            out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
-                        resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
-                        transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
-                        loglik=res$fn.value)
+                im <- matrix(NA,length(uniqueY0),3)
+                mm <- matrix(NA,length(uniqueY0),3)
+                sumnval <- 0
+#                browser()
+                for(yk in 1:ny)
+                {
+                    if(idlink[yk]==2)
+                    {
+                        ispl <- Ispline(uniqueY0[sumnval + 1:nvalSPLORD[yk]], zitr[1:nbzitr[yk],yk])
+
+                        mm[sumnval + 1:nvalSPLORD[yk],] <- ispl$mm
+                        im[sumnval + 1:nvalSPLORD[yk],] <- ispl$im
+
+                        sumnval <- sumnval + nvalSPLORD[yk]
+                    }
+                }
+
+                Tmm <- matrix(0,ns,4*nbevt)
+                Tim <- matrix(0,ns,4*nbevt)
+                Tim0 <- matrix(0,ns,4*nbevt)
+                Timt <- matrix(0,ns,4*nbevt)
+                for(ke in 1:nbevt)
+                {
+                    if(typrisq[ke]==3)
+                    {
+                        mspl <- Mspline(tsurv, zi[1:nz[ke],ke])
+                        Tmm[,4*(ke-1)+1:4] <- mspl$Tmm
+                        Tim[,4*(ke-1)+1:4] <- mspl$Tim
+
+                        mspl <- Mspline(tsurv0, zi[1:nz[ke],ke])
+                        Tim0[,4*(ke-1)+1:4] <- mspl$Tim
+
+                        mspl <- Mspline(tsurvint, zi[1:nz[ke],ke])
+                        Timt[,4*(ke-1)+1:4] <- mspl$Tim
+                    }
+                }
+
+                Tmm <- Tmm[,c(seq(1,4*nbevt,4), seq(2,4*nbevt,4),seq(3,4*nbevt,4),seq(4,4*nbevt,4))]
+                Tim <- Tim[,c(seq(1,4*nbevt,4), seq(2,4*nbevt,4),seq(3,4*nbevt,4),seq(4,4*nbevt,4))]
+                Tim0 <- Tim0[,c(seq(1,4*nbevt,4), seq(2,4*nbevt,4),seq(3,4*nbevt,4),seq(4,4*nbevt,4))]
+                Timt <- Timt[,c(seq(1,4*nbevt,4), seq(2,4*nbevt,4),seq(3,4*nbevt,4),seq(4,4*nbevt,4))]
+                
+                if(maxiter==0)
+                {
+                    vrais <- loglik2(b,Y0,X0,tsurv0,tsurv,devt,tsurvint,idea,idg,idcor,idcontr,
+                                     idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
+                                     nobs,nea,nmes,idiag0,NPM,nfix,bfix,epsY,
+                                     idlink,nbzitr,zitr,indiceY0,fix,
+                                     methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred,
+                                     maxmes, nparam, nxevt, nprisq, ntr, nyORD, nvalORD,
+                                     ntotvalSPL, Tmm, Tim, Tim0, Timt, mm, im, Tmm_st2, Tmm0_st2)
+                    
+                    out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
+                                Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
+                                marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
+                }
+                else
+                {   
+                    res <- mla(b=b, m=length(b), fn=loglik2,
+                               clustertype=clustertype,.packages=NULL,
+                               epsa=convB,epsb=convL,epsd=convG,
+                               digits=8,print.info=verbose,blinding=FALSE,
+                               multipleTry=25,file="",
+                               nproc=nproc,maxiter=maxiter,minimize=FALSE,
+                               Y=Y0,X=X0,Tsurv0=tsurv0,Tsurv=tsurv,Devt=devt,
+                               Tsurvint=tsurvint,idea=idea,idg=idg,idcor=idcor,
+                               idcontr=idcontr,idsurv=idsurv,idtdv=idtdv,typrisq=typrisq,
+                               nz=nz,zi=zi,nbevt=nbevt,idtrunc=idtrunc,logspecif=logspecif,
+                               ny=ny,ns=ns,nv=nv,nobs=nobs,nea=nea,nmes=nmes,idiag=idiag0,
+                               npm=NPM,nfix=nfix,bfix=bfix,
+                               epsY=epsY,idlink=idlink,nbzitr=nbzitr,zitr=zitr,
+                               indiceY=indiceY0,
+                               fix=fix,methInteg=methInteg,nMC=nMC,dimMC=dimMC,seqMC=seqMC,
+                               idst=sharedtype,nXcl=nbXpred,Xcl_Ti=Xpred_Ti,Xcl_GK=Xpred,
+                               maxmes=maxmes,nparam=nparam,nxevt=nxevt,nprisq=nprisq,ntr=ntr,
+                               nyORD=nyORD,nvalORD=nvalORD,ntotvalSPL=ntotvalSPL,
+                               Tmm=Tmm,Tim=Tim,Tim0=Tim0,Timt=Timt,mm=mm,im=im,Tmm_st2=Tmm_st2,
+                               Tmm0_st2=Tmm0_st2)
+
+                    out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                                resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
+                                transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
+                                loglik=res$fn.value)
+                }
+                
+            }
         }
     }
    
@@ -1977,4 +2077,18 @@ loglik1 <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,i
 {
     res <- 0
     .Fortran(C_loglik1,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nea0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),loglik=as.double(res))$loglik
+}
+
+
+#'@export
+loglik2 <- function(b,Y,X,Tsurv0,Tsurv,Devt,Tsurvint,idea,idg,idcor,idcontr,
+                    idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,
+                    nv,nobs,nea,nmes,idiag,npm,nfix,bfix,
+                    epsY,idlink,nbzitr,zitr,indiceY,fix,
+                    methInteg,nMC,dimMC,seqMC,idst,nXcl,Xcl_Ti,Xcl_GK,
+                    maxmes,nparam,nxevt,nprisq,ntr,nyORD,nvalORD,ntotvalSPL,
+                    Tmm,Tim,Tim0,Timt,mm,im,Tmm_st2,Tmm0_st2)
+{
+    res <- 0
+    .Fortran(C_loglik2,as.double(Y),as.double(X),as.double(Tsurv0),as.double(Tsurv),as.integer(Devt),as.double(Tsurvint),as.integer(idea),as.integer(idg),as.integer(idcor),as.integer(idcontr),as.integer(idsurv),as.integer(idtdv),as.integer(typrisq),as.integer(nz),as.double(zi),as.integer(nbevt),as.integer(idtrunc),as.integer(logspecif),as.integer(ny),as.integer(ns),as.integer(nv),as.integer(nobs),as.integer(nea),as.integer(nmes),as.integer(idiag),as.integer(npm),as.double(b),as.integer(nfix),as.double(bfix),as.double(epsY),as.integer(idlink),as.integer(nbzitr),as.double(zitr),as.integer(indiceY),as.integer(fix),as.integer(methInteg),as.integer(nMC),as.integer(dimMC),as.double(seqMC),as.integer(idst),as.integer(nXcl),as.double(Xcl_Ti),as.double(Xcl_GK),as.integer(maxmes),as.integer(nparam),as.integer(nxevt),as.integer(nprisq),as.integer(ntr),as.integer(nyORD),as.integer(nvalORD),as.integer(ntotvalSPL),as.double(Tmm),as.double(Tim),as.double(Tim0),as.double(Timt),as.double(mm),as.double(im),as.double(Tmm_st2),as.double(Tmm0_st2),loglik=as.double(res))$loglik
 }

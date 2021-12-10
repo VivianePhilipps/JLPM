@@ -931,20 +931,20 @@ double precision function vrais1_i(b,npm,i)
               if(methInteg.eq.1) then
                  !! MCO
                  call bgos(SX,0,asim(yk),x22,0.d0)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               else if(methInteg.eq.2) then
                  !! MCA
                  if(mod(l,2).eq.0) then
                     ! si l est pair on prend l'oppose du precedent
-                    ai = -b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = -abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  else
                     call bgos(SX,0,asim(yk),x22,0.d0)
-                    ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  end if
               else
                  !! QMC
                  asim(yk) = seqMC(nMC*(nea+sum(nmes(i,:)))+l)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               end if
            end if
 !if(i.lt.4) print*,"i=",i," avant do j, vrais_Y=",vrais_Y

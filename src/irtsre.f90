@@ -283,22 +283,23 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   ncor=ncor0
   nalea=nalea0
   idiag=idiag0
-  idst=idst0  
-  nXcl=nXcl0
-  Xcl_Ti=Xcl_Ti0
-  Xcl_GK=Xcl_GK0(:,1:nXcl(1))
-  if (idtrunc.eq.1) then
-    Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
+  idst=idst0
+  if(idst.eq.2) then
+     nXcl=nXcl0
+     Xcl_Ti=Xcl_Ti0
+     Xcl_GK=Xcl_GK0(:,1:nXcl(1))
+     if (idtrunc.eq.1) then
+        Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
+     end if
+     do i=1,ns0  
+        do p=1,15
+           Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
+           if (idtrunc.eq.1) then
+              Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
+           end if
+        end do
+     end do
   end if
-  do i=1,ns0  
-    do p=1,15
-      Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
-      if (idtrunc.eq.1) then
-        Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
-      end if
-    end do
-  end do
-  
   
   !     if (verbose==1) write(*,*)'ntotvalSPL',ntotvalSPL
 
@@ -407,7 +408,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   nevtparx=0
   do j=1,nv
 
-     if(idtdv(j).ne.1) then
+     !if(idtdv(j).ne.1) then
 
         if(idsurv(j).eq.1) then
            nevtparx(j) = 1
@@ -417,11 +418,11 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
            nevtparx(j) = nbevt
            nxevt = nxevt + 1
         end if
-     end if
+     !end if
 
   end do
 
-  nvarxevt = sum(nevtparx) + nvdepsurv
+  nvarxevt = sum(nevtparx) !+ nvdepsurv
 
   nea=0
   nef=0
@@ -720,7 +721,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   
   ! definir le nombre total de mesures pour le sujet i : nmestot (valable que pour cette fonction)
 
-  ! if (verbose==1) write(*,*)'i',i 
+  ! if (verbose==1)  write(*,*)'irtsre sujet i',i 
 
   !if(i==1 .and. id==0 .and. jd==0) then
   !print*, "b=",b   
@@ -939,6 +940,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
                 +splaa(ll-1)*mm1(indiceY(nmescur+sumMesYk+j))&
                 +splaa(ll)*mm(indiceY(nmescur+sumMesYk+j)))
 
+
            !print*,"jac=",jacobien
            !print*,"ll =",ll
            !print*,"splaa =",splaa(ll-2)
@@ -1025,6 +1027,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
   som_T0=0.d0 !delayed entry
   som_Ti=0.d0
   do l=1,nMC
+!print*,"Mc l=",l
   
      vrais_Y=1.d0
      mu=0.d0
@@ -1122,6 +1125,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
 
      ! esperance conditionnelle
      mu = matmul(X00,b0)+matmul(X01,b01)+matmul(Z,ui)
+       ! print*,"mu=",mu
      if(ncor.gt.0) mu = mu+wi
      !if(i.lt.4) then
      !print*,"i=",i," nmes=",nmes(i,1)," nmescur=",nmescur
@@ -1144,20 +1148,20 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               if(methInteg.eq.1) then
                  !! MCO
                  call bgos(SX,0,asim(yk),x22,0.d0)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               else if(methInteg.eq.2) then
                  !! MCA
                  if(mod(l,2).eq.0) then
                     ! si l est pair on prend l'oppose du precedent
-                    ai = -b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = -abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  else
                     call bgos(SX,0,asim(yk),x22,0.d0)
-                    ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  end if
               else
                  !! QMC
                  asim(yk) = seqMC(nMC*(nea+sum(nmes(i,:)))+l)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               end if
            end if
 !if(i.lt.4) print*,"i=",i," avant do j, vrais_Y=",vrais_Y
@@ -1326,6 +1330,7 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
            sumnrisq = sumnrisq + nprisq(ke)
         end do
 
+!            print*,"fct_risq ok, surv(1)=",surv(1), "  risq(1)=",risq(1)
         ! variables explicatives de la survie
         Xevt=0.d0
         bevt=0.d0
@@ -1438,8 +1443,10 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
         ! vraisemblance de la partie survie
         vrais_surv = exp(-Surv_glob)
         
+   !         print*,"vrais_surv =",vrais_surv     
         if(Devt(i).gt.0) vrais_surv = vrais_surv * fevt
 
+       !     print*,"Surv_glob=",Surv_glob, "  vrais_surv =",vrais_surv 
         if (idtrunc.eq.1) then
            !vrais_surv = vrais_surv / exp(-surv0_glob)
            som_T0 = som_T0 + exp(-surv0_glob)   !delayed entry
@@ -1456,18 +1463,19 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
 
      end if
      
-     !if(l.lt.4) print*,"l=", l, " som=",som
+  !   if(l.lt.4) print*,"l=", l, " som=",som
   end do ! fin boucle nMC
-  
+ ! print*,"fin MC vrais_irtsre_i=",vrais_irtsre_i, "jac=",jacobien
   vrais_irtsre_i = vrais_irtsre_i + log(som) - log(dble(nMC)) + jacobien
   
+ !    print*,"avt idtrunc vrais_irtsre_i=",vrais_irtsre_i
   if (idtrunc.eq.1) then    !delayedentry
       vrais_irtsre_i = vrais_irtsre_i - log(som_T0) + log(dble(nMC))
   end if  
   
   !print*,"i=",i,"som_Ti=",som_Ti,"som_T0=",som_T0," vrais_irtsre_i=",vrais_irtsre_i
   
-  !print*,"i=",i,"som=",som," vrais_Y=",vrais_Y,"jac=",jacobien," vrais_surv=",vrais_surv," vrais_irtsre_i=",vrais_irtsre_i
+ ! print*,"i=",i," som=",som," vrais_Y=",vrais_Y,"jac=",jacobien," vrais_surv=",vrais_surv," vrais_irtsre_i=",vrais_irtsre_i
   654 continue
 
   return
@@ -2128,6 +2136,7 @@ subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
      risq(k)=brisq(ll)*Tmm3(ns*(k-1)+i)+brisq(ll+1)*Tmm2(ns*(k-1)+i)     &
           +brisq(ll+2)*Tmm1(ns*(k-1)+i)+brisq(ll+3)*Tmm(ns*(k-1)+i)
      
+
      !------------ survie et risq pour Tsurv0 ----------------
      
      if (idtrunc.eq.1) then
