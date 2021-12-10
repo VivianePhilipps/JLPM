@@ -285,20 +285,21 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   idiag=idiag0
   idst=idst0  
   nXcl=nXcl0
-  Xcl_Ti=Xcl_Ti0
-  Xcl_GK=Xcl_GK0(:,1:nXcl(1))
-  if (idtrunc.eq.1) then
-    Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
-  end if
-  do i=1,ns0  
-    do p=1,15
-      Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
-      if (idtrunc.eq.1) then
-        Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
-      end if
-    end do
-  end do
-  
+  if(idst.eq.2) then
+     Xcl_Ti=Xcl_Ti0
+     Xcl_GK=Xcl_GK0(:,1:nXcl(1))
+     if (idtrunc.eq.1) then
+        Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
+     end if
+     do i=1,ns0  
+        do p=1,15
+           Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
+           if (idtrunc.eq.1) then
+              Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
+           end if
+        end do
+     end do
+  endif
   
   !     if (verbose==1) write(*,*)'ntotvalSPL',ntotvalSPL
 
@@ -407,7 +408,7 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   nevtparx=0
   do j=1,nv
 
-     if(idtdv(j).ne.1) then
+!     if(idtdv(j).ne.1) then
 
         if(idsurv(j).eq.1) then
            nevtparx(j) = 1
@@ -417,11 +418,11 @@ subroutine irtsre(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
            nevtparx(j) = nbevt
            nxevt = nxevt + 1
         end if
-     end if
+!     end if
 
   end do
 
-  nvarxevt = sum(nevtparx) + nvdepsurv
+  nvarxevt = sum(nevtparx) !+ nvdepsurv
 
   nea=0
   nef=0
@@ -1144,20 +1145,20 @@ double precision function vrais_irtsre_i(b,npm,id,thi,jd,thj,i)
               if(methInteg.eq.1) then
                  !! MCO
                  call bgos(SX,0,asim(yk),x22,0.d0)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               else if(methInteg.eq.2) then
                  !! MCA
                  if(mod(l,2).eq.0) then
                     ! si l est pair on prend l'oppose du precedent
-                    ai = -b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = -abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  else
                     call bgos(SX,0,asim(yk),x22,0.d0)
-                    ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                    ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
                  end if
               else
                  !! QMC
                  asim(yk) = seqMC(nMC*(nea+sum(nmes(i,:)))+l)
-                 ai = b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk)*asim(yk)
+                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
               end if
            end if
 !if(i.lt.4) print*,"i=",i," avant do j, vrais_Y=",vrais_Y
