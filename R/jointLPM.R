@@ -1566,6 +1566,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(nalea!=0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:nalea] <- paste("std.randomY",1:ny,sep="")
     
     names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <- paste("std.err",1:ny)
+    namesb <- names(b)
     
     
     
@@ -1663,7 +1664,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     #}
     } else {
         if(partialH) stop("partialH is not supported with mla optimization")
-
+        
         if(nvc!=0)
         {
             mvc <- matrix(0,nea,nea)
@@ -1724,7 +1725,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                            fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
                            idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
 
-                out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
                             resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
                             transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
                             loglik=res$fn.value)
@@ -1820,7 +1821,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                                Tmm=Tmm,Tim=Tim,Tim0=Tim0,Timt=Timt,mm=mm,im=im,Tmm_st2=Tmm_st2,
                                Tmm0_st2=Tmm0_st2)
 
-                    out <- list(conv=res$istop, V=res$v, best=b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                    out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
                                 resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
                                 transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
                                 loglik=res$fn.value)
@@ -1828,6 +1829,12 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                 
             }
         }
+
+        ## creer best a partir de b et bfix
+        best <- rep(NA,length(fix))
+        best[which(fix==0)] <- out$best
+        best[which(fix==1)] <- bfix
+        out$best <- best
     }
    
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
@@ -2058,7 +2065,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                #wRandom=wRandom,b0Random=b0Random,
                CPUtime=cost[3])
     
-    names(res$best) <- names(b)
+    names(res$best) <- namesb
     class(res) <-c("jointLPM")
     
     if(verbose==TRUE) cat("The program took", round(cost[3],2), "seconds \n")
