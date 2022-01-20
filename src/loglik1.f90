@@ -979,14 +979,12 @@ double precision function vrais1_i(b,npm,i)
               if(indiceY(nmescur+sumMesYk+j).eq.1) then
                  !! si Y=minY
                  vrais_Y = vrais_Y * alnorm(binf,.false.)
-                 ! P(y=ymin) = P(y<=ymin) donc pareil si vrais ou expect
               else if(indiceY(nmescur+sumMesYk+j).eq.nvalORD(ykord)) then
                  !! si Y=maxY
-
+                 vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
               else
                  !! minY < Y < maxY
-                    vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
-
+                 vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
               end if
               !if(i.lt.4) print*,"vrais_Y=",vrais_Y
 
