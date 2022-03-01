@@ -1,3 +1,12 @@
+#' Brief summary of a \code{JLPM} object
+#' 
+#' This function provides a brief summary of \code{JLPM} estimations.
+#' 
+#' @param x an object inheriting from class \code{JLPM} for a joint latent process model.
+#' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
+#' 
+#' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
+#' 
 #' @export
 #'
 print.jointLPM <- function(x,...)

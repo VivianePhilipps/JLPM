@@ -1,3 +1,16 @@
+#' Summary of a \code{JLPM} object
+#' 
+#' This function provides a summary of \code{JLPM} estimations.
+#' 
+#' @param object an object inheriting from class \code{JLPM} for a joint latent process model.
+#' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
+#' 
+#' @return Print a summary of JLPM estimations 
+#' with matrices containing the estimates, their standard errors, Wald statistics and p-values
+#' for the parameter of each submodel. #TS  
+#' 
+#' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
+#' 
 #' @export
 #'
 summary.jointLPM <- function(object,...)
