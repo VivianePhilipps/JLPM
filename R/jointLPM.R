@@ -1925,7 +1925,6 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     return(res)
 }
 
-#' @export
 loglik <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
                    nv0,nobs0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
