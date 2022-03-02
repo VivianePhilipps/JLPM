@@ -23,7 +23,7 @@ jointLPM(
   TimeDepVar = NULL,
   logscale = FALSE,
   startWeibull = 0,
-  sharedtype = 1,
+  sharedtype = "RE",
   methInteg = "QMC",
   nMC = 1000,
   data,
@@ -39,7 +39,9 @@ jointLPM(
   nsim = 100,
   range = NULL,
   verbose = TRUE,
-  returndata = FALSE
+  returndata = FALSE,
+  nproc = 1,
+  clustertype = NULL
 )
 }
 \arguments{
@@ -152,8 +154,8 @@ details section}
 \item{startWeibull}{optional numeric with Weibull hazard functions only.
 Indicates the shift in the Weibull distribution.}
 
-\item{sharedtype}{indicator of shared random function type : 1 for gi(bi,t)=bi, 
-2 for gi(bi,t)=predicted current level of latent process}
+\item{sharedtype}{indicator of shared random function type : \code{'RE'} for gi(bi,t)=bi, 
+\code{'CL'} for gi(bi,t)=predicted current level of latent process}
 
 \item{methInteg}{character indicating the type of integration to compute the
 log-likelihood. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
@@ -207,6 +209,10 @@ reported. Default to TRUE.}
 
 \item{returndata}{logical indicating if data used for computation should be
 returned. Default to FALSE, data are not returned.}
+
+\item{nproc}{number of cores for parallel computation}
+
+\item{clustertype}{one of the supported types types from \code{makeCluster} #TS, a preciser}
 }
 \value{
 A list is returned containing some internal information used in related
@@ -265,7 +271,8 @@ The association between the longitudinal and the survival data is captured by in
 the random effect from the mixed model or the predicted current level 
 of the underlying process as a linear predictor in the proportional hazard survival model.
 Parameters of the measurement models, of the latent process mixed model and of the 
-survival model are estimated simultaneously using a maximum likelihood method.
+survival model are estimated simultaneously using a maximum likelihood method,
+through a Marquardt-Levenberg algorithm. #TS
 }
 \details{
 A. THE MEASUREMENT MODELS
@@ -333,14 +340,14 @@ b. ASSOCIATION BETWEEN LONGITUDINAL AND SURVIVAL DATA
 The association between the longitudinal and the survival data is captured by including 
 a function of the elements from the latent process mixed model as a predictor in the survival model.
  We implement two association structures,
-that should be specified through 'sharedtype' argument.
+that should be specified through \code{sharedtype} argument.
 
-1. the random effect from the latent process linear mixed model (sharedtype=1) :
+1. the random effect from the latent process linear mixed model (\code{sharedtype='RE'}) :
 the q random effects modeling the individual deviation in the longitudinal model are also included
 in the survival model, so that a q-vector of parameters measures the association
 between the risk of event and the longitudinal outcome(s).
 
-2. the predicted current level of the underlying process (sharedtype=2) :
+2. the predicted current level of the underlying process (\code{sharedtype='CL'}) :
 the predicted latent process defined by the mixed model appears as
 time-dependent covariate in the survival model.
 The association between the longitudinal process and the risk of event
@@ -361,9 +368,9 @@ is required. Covariates parameters should be included in the same order as in su
 In the presence of cause-specific effects, the number of parameters should be
 multiplied by the number of causes;
 (3) parameter(s) of association between the longitudinal 
-and the survival process: for sharedtype=1, one parameter per random effect
+and the survival process: for \code{sharedtype='RE'}, one parameter per random effect
 and per cause of event is 
-required; for shredtype=2, one parameter is required;
+required; for \code{sharedtype='CL'}, one parameter is required;
 (4) for all covariates  in fixed, one parameter is required. Parameters should
 be included in the same  order as in fixed;
 (5)for all covariates included with \code{contrast()} in \code{fixed}, one
@@ -392,6 +399,9 @@ program may not converge and reach the maximum number of iterations fixed at
 100 by default. In this case, the user should check that parameter estimates at the
 last iteration are not on the boundaries of the parameter space.
 
+To reduce the computation time, this program can be carried out in parallel mode,
+ie. using multiple cores which number can be specified with argument \code{nproc}. #TS
+
 If the parameters are on the boundaries of the parameter space, the
 identifiability of the model is critical. This may happen especially with
 splines parameters that may be too close to 0 (lower boundary). When
@@ -417,7 +427,7 @@ M1 <- jointLPM(fixed = IST~age65*(male+CEP),
                 subject="ID",
                 link="linear",
                 survival=Surv(age_init,agedem,dem)~male,
-                sharedtype=1,
+                sharedtype='RE',
                 hazard="Weibull",
                 data=paq,
                 var.time="age65")
@@ -430,7 +440,7 @@ M2 <- jointLPM(fixed = HIER~age65*male,
                 subject = "ID", 
                 link = "thresholds",
                 survival = Surv(age_init,agedem,dem)~male,
-                sharedtype = 2,
+                sharedtype = 'CL',
                 var.time = "age65",
                 data = paq, 
                 methInteg = "QMC", 
@@ -442,6 +452,10 @@ summary(M2)}
 Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2021).
 Joint models for the longitudinal analysis of measurement scales in the presence 
 of informative dropout   arXiv:2110.02612
+
+Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
+Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
+R package marqLevAlg   arXiv:2009.03840  #TS
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima

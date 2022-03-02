@@ -7,7 +7,7 @@ Author: Viviane Philipps, Tiphaine Saulnier, Cecile Proust-Lima
 Maintainer: Viviane Philipps <Viviane.Philipps@u-bordeaux.fr> 
 Description: Estimation of extented joint models with shared random effects. Longitudinal data are handled in latent process models for continuous (Gaussian or curvilinear) and ordinal outcomes while proportional hazard models are used for the survival part. We propose a frequentist approach using maximum likelihood estimation.
 License: GPL (>= 2.0)
-Depends: R (>= 2.14.0), survival (>= 2.37-2), randtoolbox, stringr
+Depends: R (>= 2.14.0), survival (>= 2.37-2), randtoolbox, stringr, marqLevAlg (>= 2.0.0)
 Suggests: lcmm
 BugReports: https://github.com/VivianePhilipps/JLPM/issues
 LazyLoad: yes

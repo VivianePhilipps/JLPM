@@ -16,7 +16,8 @@
 #' the random effect from the mixed model or the predicted current level 
 #' of the underlying process as a linear predictor in the proportional hazard survival model.
 #' Parameters of the measurement models, of the latent process mixed model and of the 
-#' survival model are estimated simultaneously using a maximum likelihood method.
+#' survival model are estimated simultaneously using a maximum likelihood method,
+#' through a Marquardt-Levenberg algorithm. #TS
 #' 
 #' 
 #' 
@@ -85,14 +86,14 @@
 #' The association between the longitudinal and the survival data is captured by including 
 #' a function of the elements from the latent process mixed model as a predictor in the survival model.
 #'  We implement two association structures,
-#' that should be specified through 'sharedtype' argument.
+#' that should be specified through \code{sharedtype} argument.
 #' 
-#' 1. the random effect from the latent process linear mixed model (sharedtype=1) :
+#' 1. the random effect from the latent process linear mixed model (\code{sharedtype='RE'}) :
 #' the q random effects modeling the individual deviation in the longitudinal model are also included
 #' in the survival model, so that a q-vector of parameters measures the association
 #' between the risk of event and the longitudinal outcome(s).
 #' 
-#' 2. the predicted current level of the underlying process (sharedtype=2) :
+#' 2. the predicted current level of the underlying process (\code{sharedtype='CL'}) :
 #' the predicted latent process defined by the mixed model appears as
 #' time-dependent covariate in the survival model.
 #' The association between the longitudinal process and the risk of event
@@ -113,9 +114,9 @@
 #' In the presence of cause-specific effects, the number of parameters should be
 #' multiplied by the number of causes;
 #' (3) parameter(s) of association between the longitudinal 
-#' and the survival process: for sharedtype=1, one parameter per random effect
+#' and the survival process: for \code{sharedtype='RE'}, one parameter per random effect
 #' and per cause of event is 
-#' required; for shredtype=2, one parameter is required;
+#' required; for \code{sharedtype='CL'}, one parameter is required;
 #' (4) for all covariates  in fixed, one parameter is required. Parameters should
 #' be included in the same  order as in fixed;
 #' (5)for all covariates included with \code{contrast()} in \code{fixed}, one
@@ -143,6 +144,9 @@
 #' program may not converge and reach the maximum number of iterations fixed at
 #' 100 by default. In this case, the user should check that parameter estimates at the
 #' last iteration are not on the boundaries of the parameter space.
+#' 
+#' To reduce the computation time, this program can be carried out in parallel mode,
+#' ie. using multiple cores which number can be specified with argument \code{nproc}. #TS
 #' 
 #' If the parameters are on the boundaries of the parameter space, the
 #' identifiability of the model is critical. This may happen especially with
@@ -285,9 +289,11 @@
 #' log-likelihood. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
 #' 'QMC' for quasi Monte Carlo. Default to "QMC".
 #' @param nMC integer, number of Monte Carlo simulations. Default to 1000.
-#' @param sharedtype indicator of shared random function type : 1 for gi(bi,t)=bi, 
-#' 2 for gi(bi,t)=predicted current level of latent process
+#' @param sharedtype indicator of shared random function type : \code{'RE'} for gi(bi,t)=bi, 
+#' \code{'CL'} for gi(bi,t)=predicted current level of latent process
 #' @param var.time name of the variable representing the measurement times.
+#' @param nproc number of cores for parallel computation
+#' @param clustertype one of the supported types types from \code{makeCluster} #TS, a preciser
 #' 
 #' @return A list is returned containing some internal information used in related
 #' functions. Users may investigate the following elements : 
@@ -335,6 +341,10 @@
 #' Joint models for the longitudinal analysis of measurement scales in the presence 
 #' of informative dropout   arXiv:2110.02612
 #' 
+#' Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
+#' Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
+#' R package marqLevAlg   arXiv:2009.03840  #TS
+#' 
 #' @examples
 #' #### Examples with paquid data from R-package lcmm
 #' library(lcmm)
@@ -349,7 +359,7 @@
 #'                 subject="ID",
 #'                 link="linear",
 #'                 survival=Surv(age_init,agedem,dem)~male,
-#'                 sharedtype=1,
+#'                 sharedtype='RE',
 #'                 hazard="Weibull",
 #'                 data=paq,
 #'                 var.time="age65")
@@ -362,7 +372,7 @@
 #'                 subject = "ID", 
 #'                 link = "thresholds",
 #'                 survival = Surv(age_init,agedem,dem)~male,
-#'                 sharedtype = 2,
+#'                 sharedtype = 'CL',
 #'                 var.time = "age65",
 #'                 data = paq, 
 #'                 methInteg = "QMC", 
@@ -372,10 +382,11 @@
 #' @export
 #' 
 jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
-                survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype=1,
+                survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype='RE',
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
-                nsim=100,range=NULL,verbose=TRUE,returndata=FALSE)
+                nsim=100,range=NULL,verbose=TRUE,returndata=FALSE,
+                nproc=1, clustertype=NULL)
 {
     ptm <- proc.time()
     if(verbose==TRUE) cat("Be patient, jointLPM is running ... \n")
@@ -395,11 +406,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(!is.numeric(data[,subject])) stop("The argument subject must be numeric")
     if(all(link %in% c("linear","beta","thresholds")) & !is.null(intnodes)) stop("Intnodes should only be specified with splines links")
     if(!(na.action%in%c(1,2)))stop("only 1 for 'na.omit' or 2 for 'na.fail' are required in na.action argument")
-    if(!(sharedtype%in%c(1,2)))stop("The value of argument sharedtype must be 1 (for shared random effects) or 2 (for shared latent process current level)") # TS
+    if(!(sharedtype%in%c('RE','CL')))stop("The value of argument sharedtype must be 'RE' (for shared random effects) or 'CL' (for shared latent process current level)") # TS
     if(missing(var.time) | length(var.time)!=1)stop("The argument var.time is missing or is not of length 1")
     if(!(var.time %in% colnames(data))) stop("Unable to find variable 'var.time' in 'data'")
-    if(sharedtype == 2 & missing(cor)==FALSE) print("WARNING : wi not computed on current level prediction 'cause considered not shared")
-    if(sharedtype == 2 & missing(TimeDepVar)==FALSE) stop("model with sharedtype=2 not yet programmed with time dependent effect on survival")
+    if(sharedtype == 'CL' & missing(cor)==FALSE) print("WARNING : wi not computed on current level prediction 'cause considered not shared")
+    if(sharedtype == 'CL' & missing(TimeDepVar)==FALSE) stop("model with sharedtype='CL' not yet programmed with time dependent effect on survival")
     
     #    if(length(posfix) & missing(B)) stop("A set of initial parameters must be specified if some parameters are not estimated")
     
@@ -1112,12 +1123,12 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     
     ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
-    if(sharedtype == 1){  #gi(bi,t)=bi
+    if(sharedtype == 'RE'){  #gi(bi,t)=bi
         Xpred <- 0
         Xpred_Ti <- 0
         nbXpred <- 0
     }
-    if(sharedtype == 2){   #gi(bi,t)=niv.courant(t)
+    if(sharedtype == 'CL'){   #gi(bi,t)=niv.courant(t)
         
         # /!\ si varexp dependante du tps (autre que var.time), prediction impossible
         nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
@@ -1126,7 +1137,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
             for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
                 tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
                 if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
-                    stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype=2 due to impossibility to predict"))
+                    stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype='CL' due to impossibility to predict"))
             }  
         }
         
@@ -1209,7 +1220,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     idiag0 <- ifelse(idiag==TRUE,1,0)
     nalea <- ifelse(randomY==TRUE,ny,0)
     logspecif <- as.numeric(logscale)
-    loglik <- 0
+    #loglik <- 0
     ni <- 0
     istop <- 0
     gconv <- rep(0,3)
@@ -1266,9 +1277,9 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     predRE <- rep(0,ns*nea)
     
     ## nb parametres d'association  #TS
-    if(sharedtype == 1)
+    if(sharedtype == 'RE')
         nasso <- nea*nbevt
-    if(sharedtype == 2)
+    if(sharedtype == 'CL')
         nasso <- nbevt
     
     ## prm partie long
@@ -1527,13 +1538,13 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         if(nvarxevt>0) names(b)[nrisqtot+1:nvarxevt] <- nom1
         
         
-        if(sharedtype == 1){   #TS
+        if(sharedtype == 'RE'){   #TS
             for(i in 1:nbevt)
             {
                 names(b)[nrisqtot+nvarxevt+(nbevt-1)*nea+1:nea] <- paste("event",i," asso",1:nea,sep="")
             }
         }
-        if(sharedtype == 2)
+        if(sharedtype == 'CL')
             names(b)[nrisqtot+nvarxevt+1:nbevt] <- paste("event",1:nbevt," asso",sep="")
         
         
@@ -1563,6 +1574,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(nalea!=0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:nalea] <- paste("std.randomY",1:ny,sep="")
     
     names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <- paste("std.err",1:ny)
+    namesb <- names(b)
     
     
     
@@ -1578,86 +1590,104 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     
     ## pour H restreint
+    if(partialH) stop("partialH is not supported with mla optimization")
     Hr <- as.numeric(partialH)
     pbH <- rep(0,NPM)
     pbH[grep("I-splines",names(b))] <- 1
     pbH[posfix] <- 0
     if(sum(pbH)==0 & Hr==1) stop("No partial Hessian matrix can be defined")
     
+    # varcov RE
+    if(nvc!=0)
+    {
+        mvc <- matrix(0,nea,nea)
+        if(idiag0==0)
+        {
+            mvc[upper.tri(mvc, diag=TRUE)] <- c(1,b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+            mvc <- t(mvc)
+            mvc[upper.tri(mvc, diag=TRUE)] <- c(1,b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+            ch <- chol(mvc)
+            
+            b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- ch[upper.tri(ch, diag=TRUE)][-1]
+        }
+        else
+        {
+            b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- sqrt(b[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
+        }            
+    }
+    
+    # fixed prms
+    nfix <- sum(fix)
+    bfix <- 0
+    if(nfix>0)
+    {
+        bfix <- b[which(fix==1)]
+        b <- b[which(fix==0)]
+        NPM <- NPM-nfix
+    }
+    
+    
+    
     #browser()
     ###estimation
     
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
-
-    out <- .Fortran(C_irtsre,
-                    as.double(Y0),
-                    as.double(X0),
-                    as.double(tsurv0),
-                    as.double(tsurv),
-                    as.integer(devt),
-                    as.integer(ind_survint),
-                    as.integer(idea),
-                    as.integer(idg),
-                    as.integer(idcor),
-                    as.integer(idcontr),
-                    as.integer(idsurv),
-                    as.integer(idtdv),
-                    as.integer(typrisq),
-                    as.integer(nz),
-                    as.double(zi),
-                    as.integer(nbevt),
-                    as.integer(idtrunc),
-                    as.integer(logspecif),
-                    as.integer(ny),
-                    as.integer(ns),
-                    as.integer(nv),
-                    as.integer(nobs),
-                    as.integer(nea),
-                    as.integer(nmes),
-                    as.integer(idiag0),
-                    as.integer(ncor),
-                    as.integer(nalea),
-                    as.integer(NPM),
-                    best=as.double(b),
-                    V=as.double(V),
-                    loglik=as.double(loglik),
-                    niter=as.integer(ni),
-                    conv=as.integer(istop),
-                    gconv=as.double(gconv),
-                    resid_m=as.double(resid_m),
-                    resid_ss=as.double(resid_ss),
-                    predRE=as.double(predRE),
-                    predRE_Y=as.double(predRE_Y),
-                    as.double(conv3), # TS
-                    as.integer(maxiter),
-                    as.double(epsY),
-                    as.integer(idlink),
-                    as.integer(nbzitr),
-                    as.double(zitr),
-                    as.double(uniqueY0),
-                    as.integer(indiceY0),
-                    as.integer(nvalSPLORD),
-                    time=as.double(time),
-                    risq_est=as.double(risq_est),
-                    risqcum_est=as.double(risqcum_est),
-                    marker=as.double(marker),
-                    transfY=as.double(transfY),
-                    as.integer(nsim),
-                    Yobs=as.double(Yobs),
-                    rlindiv=as.double(rlindiv),
-                    as.integer(pbH),
-                    as.integer(fix),
-                    as.integer(methInteg),
-                    as.integer(nMC),
-                    as.integer(dimMC),
-                    as.double(seqMC),
-                    as.integer(sharedtype),  #TS
-                    as.integer(nbXpred),
-                    as.double(Xpred_Ti),
-                    as.double(Xpred))
-
-    #}
     
+    sharedtype <- ifelse(sharedtype == 'RE',1,2) #recodage 1 pr RE, 2 pr CL  #TS
+    
+    
+    
+    ###############
+    ###   MLA   ###
+    ###############
+    
+    if(maxiter==0)
+    {
+        vrais <- loglik(b,Y0,X0,tsurv0,tsurv,devt,ind_survint,idea,idg,idcor,idcontr,
+                        idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
+                        nobs,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
+                        idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
+                        methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred)
+        
+        out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
+                    Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
+                    marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
+    }
+    else
+    {   
+        res <- mla(b=b, m=length(b), fn=loglik,
+                   clustertype=clustertype,.packages=NULL,
+                   epsa=convB,epsb=convL,epsd=convG,
+                   digits=8,print.info=verbose,blinding=FALSE,
+                   multipleTry=25,file="",
+                   nproc=nproc,maxiter=maxiter,minimize=FALSE,
+                   Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
+                   ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
+                   idcontr0=idcontr,idsurv0=idsurv,idtdv0=idtdv,typrisq0=typrisq,
+                   nz0=nz,zi0=zi,nbevt0=nbevt,idtrunc0=idtrunc,logspecif0=logspecif,
+                   ny0=ny,ns0=ns,nv0=nv,nobs0=nobs,nmes0=nmes,idiag0=idiag0,
+                   ncor0=ncor,nalea0=nalea,npm0=NPM,nfix0=nfix,bfix0=bfix,
+                   epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
+                   uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
+                   fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
+                   idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
+        
+        out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
+                    resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
+                    transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
+                    loglik=res$fn.value)
+    }
+    
+    
+    
+    ## creer best a partir de b et bfix
+    best <- rep(NA,length(fix))
+    best[which(fix==0)] <- out$best
+    best[which(fix==1)] <- bfix
+    out$best <- best
+    NPM <- NPM+nfix
+        
+
    
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
@@ -1887,7 +1917,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                #wRandom=wRandom,b0Random=b0Random,
                CPUtime=cost[3])
     
-    names(res$best) <- names(b)
+    names(res$best) <- namesb
     class(res) <-c("jointLPM")
     
     if(verbose==TRUE) cat("The program took", round(cost[3],2), "seconds \n")
@@ -1895,3 +1925,13 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     return(res)
 }
 
+#' @export
+loglik <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
+                   idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
+                   nv0,nobs0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
+                   epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,nvalSPLORD0,fix0,
+                   methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0)
+{
+    res <- 0
+    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),loglik_res=as.double(res))$loglik_res
+}
