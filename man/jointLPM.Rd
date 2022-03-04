@@ -53,9 +53,8 @@ identifiability purposes, the intercept specified by default should not be
 removed by a \code{-1}. Variables on which a contrast above the different
 outcomes should also be estimated are included with \code{contrast()}.}
 
-\item{random}{an optional one-sided formula for the random-effects in the
-latent process mixed model. At least one random effect should be included
-for identifiability purposes. Covariates with a random-effect are separated
+\item{random}{a one-sided formula for the random-effects in the
+latent process mixed model. Covariates with a random-effect are separated
 by \code{+}. An intercept should always be included for identifiability.}
 
 \item{subject}{name of the covariate representing the grouping structure.}
@@ -66,15 +65,15 @@ variance-covariance is considered (by default). If \code{TRUE} a diagonal
 matrix of variance-covariance is considered.}
 
 \item{cor}{optional indicator for inclusion of an autocorrelated Gaussian
-process in the latent process linear (latent process) mixed model. Option
-"BM" indicates a brownian motion with parameterized variance. Option "AR"
-specifies an autoregressive process of order 1 with parameterized variance
-and correlation intensity. Each option should be followed by the time
-variable in brackets as \code{cor=BM(time)}. By default, no autocorrelated
+process in the linear mixed model at the latent process level. Option
+\code{BM(time)} indicates a brownian motion with parameterized variance while
+option \code{AR(time)} specifies an autoregressive process in continuous time
+with parameterized variance and correlation intensity. In both cases, \code{time}
+is the variable representing the measurement times. By default, no autocorrelated
 Gaussian process is added.}
 
-\item{link}{optional vector of families of parameterized link functions to
-estimate (one by outcome). Option "linear" (by default) specifies a linear
+\item{link}{optional vector of families of parameterized link functions defining
+the measurement models (one by outcome). Option "linear" (by default) specifies a linear
 link function. Other possibilities include "beta" for estimating a link
 function from the family of Beta cumulative distribution functions, "Splines" 
 for approximating the link function by I-splines and "thresholds" for ordinal
@@ -83,8 +82,8 @@ nodes and the nodes location should be also specified. The number of nodes is
 first entered followed by \code{-}, then the location is specified with "equi", 
 "quant" or "manual" for respectively equidistant
 nodes, nodes at quantiles of the marker distribution or interior nodes
-entered manually in argument \code{intnodes}. It is followed by \code{-} and
-finally "splines" is indicated.  For example, "7-equi-splines" means
+entered manually in argument \code{intnodes}. It is followed by \code{-splines}.
+For example, "7-equi-splines" means
 I-splines with 7 equidistant nodes, "6-quant-splines" means I-splines with 6
 nodes located at the quantiles of the marker distribution and
 "9-manual-splines" means I-splines with 9 nodes, the vector of 7 interior
@@ -93,7 +92,7 @@ nodes being entered in the argument \code{intnodes}.}
 \item{intnodes}{optional vector of interior nodes. This argument is only
 required for a I-splines link function with nodes entered manually.}
 
-\item{epsY}{optional definite positive real used to rescale the marker in
+\item{epsY}{optional positive real used to rescale the marker in
 (0,1) when the beta link function is used. By default, epsY=0.5.}
 
 \item{randomY}{optional logical for including an outcome-specific random
@@ -104,14 +103,13 @@ with parameterized variance are included.}
 \item{var.time}{name of the variable representing the measurement times.}
 
 \item{survival}{two-sided formula object. The left side of the formula corresponds 
-to a surv() object of type "counting" for right-censored and left-truncated 
-data (example: Surv(Time,EntryTime,Indicator)) or of type "right" for right-censored 
-data (example: Surv(Time,Indicator)). Multiple causes of event can be considered 
-in the Indicator (0 for censored, k for cause k of event). The right side of the 
-formula specifies the names of covariates to include in the survival model(example: 
-Surv(Time,Indicator) ~ X1 for an effect of X1). 
-Code cause(X1) specifies a cause-specific covariate effect for X1 on each cause 
-of event.}
+to a Surv() object for right-censored (\code{Surv(EntryTime,Time,Indicator)})
+and possibly left-truncated (\code{Surv(EntryTime,Time,Indicator)}).
+Multiple causes of event can be considered 
+in the Indicator (0 for censored, k for event of cause k). The right side of the 
+formula specifies the covariates to include in the survival model.
+Cause-specific covariate effect are specified with \code{cause()}.For example,  
+Surv(Time,Indicator) ~ X1 + cause(X2) indicates a common effect of X1 and a cause-specific effect of X2.}
 
 \item{hazard}{optional family of hazard function assumed for the survival model. 
 By default, "Weibull" specifies a Weibull baseline risk function. Other possibilities 
@@ -127,7 +125,7 @@ with 5 equidistant nodes, "6-quant-piecewise" for piecewise constant risk over 5
 intervals and nodes defined at the quantiles of the times of events distribution 
 and "9-manual-splines" for M-splines risk function with 9 nodes, the vector of 7 
 interior nodes being entered in the argument hazardnodes. In the presence of competing 
-events, a vector of hazards should be provided such as hazard=c("Weibull","splines" 
+events, a vector of hazards should be provided such as hazard=c("Weibull","5-quant-splines") 
 with 2 causes of event, the first one modelled by a Weibull baseline cause-specific 
 risk function and the second one by splines.}
 
@@ -154,8 +152,9 @@ details section}
 \item{startWeibull}{optional numeric with Weibull hazard functions only.
 Indicates the shift in the Weibull distribution.}
 
-\item{sharedtype}{indicator of shared random function type : \code{'RE'} for gi(bi,t)=bi, 
-\code{'CL'} for gi(bi,t)=predicted current level of latent process}
+\item{sharedtype}{indicator of shared random function type. \code{'RE'} indicates
+an association through the random effects included in the linear mixed model.
+\code{'CL'} defines a association through the predicted current level of the latent process.}
 
 \item{methInteg}{character indicating the type of integration to compute the
 log-likelihood. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
@@ -192,9 +191,8 @@ log-likelihood stability. By default, convL=0.0001.}
 \item{convG}{optional threshold for the convergence criterion based on the
 derivatives. By default, convG=0.0001.}
 
-\item{partialH}{optional logical for Beta or Splines link functions only.
-Indicates whether the parameters of the link functions can be dropped from
-the Hessian matrix to define convergence criteria.}
+\item{partialH}{optional vector giving the indices in vector B of parameters that
+can be dropped from the Hessian matrix to define convergence criteria.}
 
 \item{nsim}{number of points used to plot the estimated link functions. By
 default, nsim=100.}
@@ -210,9 +208,10 @@ reported. Default to TRUE.}
 \item{returndata}{logical indicating if data used for computation should be
 returned. Default to FALSE, data are not returned.}
 
-\item{nproc}{number of cores for parallel computation}
+\item{nproc}{number of cores for parallel computation.}
 
-\item{clustertype}{one of the supported types types from \code{makeCluster} #TS, a preciser}
+\item{clustertype}{the type of cluster that should internally be created.
+See \code{parallel::makeCluster} for possible values.}
 }
 \value{
 A list is returned containing some internal information used in related
@@ -222,7 +221,7 @@ functions. Users may investigate the following elements :
 \item{best}{vector of parameter estimates in the same order as specified in 
 \code{B} and detailed in section \code{details}}
 \item{V}{vector containing the upper triangle matrix of variance-covariance
-estimates of \code{Best} with exception for variance-covariance parameters
+estimates of \code{best} with exception for variance-covariance parameters
 of the random-effects for which \code{V} contains the variance-covariance
 estimates of the Cholesky transformed parameters displayed in \code{cholesky}} 
 \item{gconv}{vector of convergence criteria: 1. on the parameters, 2. on the 
@@ -285,9 +284,9 @@ standard error of the first random effect at 1. The nature of each measurment
 model adapts to the type of the outcome it models. 
 
 1. For continuous Gaussian outcomes, linear models are used and required 2 parameters for 
-the following transformation (Y(t) - b1)/b2
+the transformation (Y(t) - b1)/b2
 
-2. For continuous non-Gaussian outcomes, curvilinear models can be used using 
+2. For continuous non-Gaussian outcomes, curvilinear models use 
 parametrized link function to link outcomes to the latent process. 
 With the "beta" link function, 4 parameters are required for the
 following transformation: [ h(Y(t)',b1,b2) - b3]/b4 where h is the Beta CDF
@@ -299,15 +298,14 @@ With the "splines" link function, n+2 parameters are required for the
 following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2}*I_{n+1}(Y(t)),
 where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constraint the
 parameters to be positive, except for b_1, the program estimates b_k^* (for
-k=2,...,n+2) so that b_k=(b_k^*)^2. This parameterization may lead in some
-cases to problems of convergence that we are currently addressing.
+k=2,...,n+2) so that b_k=(b_k^*)^2.
 
 3. For discrete ordinal outcomes, cumulative probit models are used. For a
 (n+1)-level outcome, the model consist of determining n thresholds t_k in the 
 latent process scale which correspond to the outcome level changes. Then,
 Y(t) = n' <=> t_n' < L(t) + e <= t_(n'+1) with e the standard error of the outcome.
-In \code{B} or \code{best}, thresholds are presented as squared root of the increment,
-such as t_1=t'_1, t_2=t_1+(t'_2)^2, t_3=t_2+(t'_3)^2, ...
+To ensure that t_1 < t_2 < ... < t_n, the program estimates t'_1, t'_2, ..., t'_n
+such that t_1=t'_1, t_2=t_1+(t'_2)^2, t_3=t_2+(t'_3)^2, ...
 
 
 B. THE SURVIVAL MODEL
@@ -370,14 +368,14 @@ multiplied by the number of causes;
 (3) parameter(s) of association between the longitudinal 
 and the survival process: for \code{sharedtype='RE'}, one parameter per random effect
 and per cause of event is 
-required; for \code{sharedtype='CL'}, one parameter is required;
+required; for \code{sharedtype='CL'}, one parameter per cause of event is required;
 (4) for all covariates  in fixed, one parameter is required. Parameters should
 be included in the same  order as in fixed;
 (5)for all covariates included with \code{contrast()} in \code{fixed}, one
 supplementary parameter per outcome is required excepted for the last
 outcome for which the parameter is not estimated but deduced from the others;
 (6) the variance of each random-effect specified in random 
-(excepted the first one, usually the intercept, which is constrained to 1) 
+(excepted the intercept which is constrained to 1) 
 if idiag=TRUE and the inferior triangular variance-covariance matrix of all 
 the random-effects if idiag=FALSE;
 (7) if \code{cor} is specified, the standard error of the Brownian motion or 
@@ -399,9 +397,6 @@ program may not converge and reach the maximum number of iterations fixed at
 100 by default. In this case, the user should check that parameter estimates at the
 last iteration are not on the boundaries of the parameter space.
 
-To reduce the computation time, this program can be carried out in parallel mode,
-ie. using multiple cores which number can be specified with argument \code{nproc}. #TS
-
 If the parameters are on the boundaries of the parameter space, the
 identifiability of the model is critical. This may happen especially with
 splines parameters that may be too close to 0 (lower boundary). When
@@ -412,6 +407,9 @@ to remove the parameters of the Beta of Splines link function from the
 inverse of the Hessian with option partialH. If not, the program should be 
 run again with other initial values, with a higher maximum number of iterations 
 or less strict convergence tolerances.
+
+To reduce the computation time, this program can be carried out in parallel mode,
+ie. using multiple cores which number can be specified with argument \code{nproc}.
 }
 \examples{
 #### Examples with paquid data from R-package lcmm
@@ -419,8 +417,8 @@ library(lcmm)
 paq <- paquid[which(paquid$age_init<paquid$agedem),]
 paq$age65 <- (paq$age-65)/10
 
-## Estimation with one Gaussian marker
 \dontrun{
+## Estimation with one Gaussian marker
 M1 <- jointLPM(fixed = IST~age65*(male+CEP),
                 random=~age65,
                 idiag=FALSE,
@@ -431,10 +429,9 @@ M1 <- jointLPM(fixed = IST~age65*(male+CEP),
                 hazard="Weibull",
                 data=paq,
                 var.time="age65")
-summary(M1)}
+summary(M1)
 
 #### Estimation with one ordinal marker
-\dontrun{
 M2 <- jointLPM(fixed = HIER~age65*male,
                 random = ~age65,
                 subject = "ID", 

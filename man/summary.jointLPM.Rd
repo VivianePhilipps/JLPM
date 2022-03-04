@@ -2,22 +2,21 @@
 % Please edit documentation in R/summary.jointLPM.R
 \name{summary.jointLPM}
 \alias{summary.jointLPM}
-\title{Summary of a \code{JLPM} object}
+\title{Summary of a joint latent process model}
 \usage{
 \method{summary}{jointLPM}(object, ...)
 }
 \arguments{
-\item{object}{an object inheriting from class \code{JLPM} for a joint latent process model.}
+\item{object}{an object inheriting from class \code{jointLPM} for a joint latent process model.}
 
 \item{...}{further arguments to be passed to or from other methods. They are ignored in this function.}
 }
 \value{
-Print a summary of JLPM estimations 
-with matrices containing the estimates, their standard errors, Wald statistics and p-values
-for the parameter of each submodel. #TS
+Returns invisibily a list of two matrices containing the estimates, their standard errors,
+Wald statistics and associated p-values for the survival submodel and for the mixed model's fixed effects.
 }
 \description{
-This function provides a summary of \code{JLPM} estimations.
+This function provides a summary of model estimated with the \code{jointLPM} function.
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima

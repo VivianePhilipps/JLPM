@@ -2,17 +2,17 @@
 % Please edit documentation in R/print.jointLPM.R
 \name{print.jointLPM}
 \alias{print.jointLPM}
-\title{Brief summary of a \code{JLPM} object}
+\title{Brief summary of a joint latent process model}
 \usage{
 \method{print}{jointLPM}(x, ...)
 }
 \arguments{
-\item{x}{an object inheriting from class \code{JLPM} for a joint latent process model.}
+\item{x}{an object inheriting from class \code{jointLPM} for a joint latent process model.}
 
 \item{...}{further arguments to be passed to or from other methods. They are ignored in this function.}
 }
 \description{
-This function provides a brief summary of \code{JLPM} estimations.
+This function provides a brief summary of model estimated with the \code{jointLPM} function.
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima

@@ -3,9 +3,17 @@
 \docType{package}
 \name{JLPM-package}
 \alias{JLPM-package}
-\title{Joint latent process models}
+\title{Estimation of joint latent process models}
 \description{
-Functions for the estimation of joint latent process models (JLPM)
+Functions for the estimation of joint latent process models (JLPM).
+Continuous and ordinal outcomes are handled for the longitudinal part,
+whereas the survival part considers multiple competing events.
+The likelihood is computed using Monte-Carlo integration. Estimation is achieved
+by maximizing the log-likelihood using a robust iterative algorithm.
+}
+\details{
+Please report to the JLPM-team any question or suggestion regarding the package
+via github only (https://github.com/VivianePhilipps/JLPM/issues).
 }
 \references{
 Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2021).
@@ -14,11 +22,9 @@ of informative dropout   arXiv:2110.02612
 
 Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
-R package marqLevAlg   arXiv:2009.03840  #TS
+R package marqLevAlg, The R Journal 13:2.
 }
 \author{
 Cecile Proust-Lima, Viviane Philipps, Tiphaine Saulnier
-
-\email{cecile.proust-lima@inserm.fr}
 }
 \keyword{package}

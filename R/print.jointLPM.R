@@ -1,8 +1,8 @@
-#' Brief summary of a \code{JLPM} object
+#' Brief summary of a joint latent process model
 #' 
-#' This function provides a brief summary of \code{JLPM} estimations.
+#' This function provides a brief summary of model estimated with the \code{jointLPM} function.
 #' 
-#' @param x an object inheriting from class \code{JLPM} for a joint latent process model.
+#' @param x an object inheriting from class \code{jointLPM} for a joint latent process model.
 #' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
 #' 
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
@@ -25,7 +25,7 @@ print.jointLPM <- function(x,...)
     dput(cl)
     cat(" \n")
 
-    posfix <- eval(cl$posfix)
+    posfix <- x$posfix
 
     cat("Statistical Model:", "\n")
     cat(paste("     Dataset:", as.character(as.expression(x$call$data))),"\n")

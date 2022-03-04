@@ -553,7 +553,7 @@ double precision function vrais_i(b,npm,i)
   double precision::ai,binf,bsup
   double precision,dimension(nbevt)::risq,surv,surv0,survint
   double precision::SX,x22,div,vrais_Y,vrais_surv,varexpsurv
-  double precision::surv0_glob,surv_glob,fevt,easurv  !TS: pblm init
+  double precision::surv0_glob,surv_glob,fevt,easurv  
   double precision,external::alnorm
   double precision::pred_cl_Ti 
   double precision::som_T0,som_Ti
@@ -751,7 +751,7 @@ double precision function vrais_i(b,npm,i)
 
            if (ll.lt.1.or.ll.gt.ntr(yk)-3) then          
               vrais_i=-1.d9
-              print*,"-1.d9 ll<1 ou ll>ntr-3",ll!," ntr=",ntr(yk)," numSPL=",numSPL," y=",Y(nmescur+sumMesYk+j)
+              !print*,"-1.d9 ll<1 ou ll>ntr-3",ll!," ntr=",ntr(yk)," numSPL=",numSPL," y=",Y(nmescur+sumMesYk+j)
               goto 654
            end if
            if (ll.gt.1) then
@@ -1068,7 +1068,7 @@ double precision function vrais_i(b,npm,i)
               CALL dsinv(Vi,nmes(i,yk),eps,ier,det)
               if (ier.eq.-1) then
                  vrais_i=-1.d9
-                 print*,"-1.d9 dsinv continu MC"
+                 !print*,"-1.d9 dsinv continu MC"
                  !print*,"b=",b
                  !print*,"bfix=",bfix
                  !print*,"fix=",fix
@@ -1200,6 +1200,7 @@ double precision function vrais_i(b,npm,i)
         nxevtcurr=0
         fevt=0.d0
         pred_cl_Ti=0.d0
+        easurv=0.d0
         m=0
         do ke=1,nbevt
         
@@ -2143,8 +2144,9 @@ double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg,p)  !t time, i 
   double precision,dimension(nprisq(k))::brisq
   
   integer::j,ll,kk
-  double precision::risq0 !TS: pblm init
+  double precision::risq0 
 
+  risq0=0.d0
   if (typrisq(k).eq.2.and.logspecif.eq.1) then     !Weibull & exponentiel
      
      risq0=brisq(1)*brisq(2)*(t-zi(1,k))**(brisq(2)-1)   !fct risq base au tps t, pq tsurv(i)-zi(1,k) ? zi(1,k)=depart Weibull

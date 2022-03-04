@@ -1,13 +1,12 @@
-#' Summary of a \code{JLPM} object
+#' Summary of a joint latent process model
 #' 
-#' This function provides a summary of \code{JLPM} estimations.
+#' This function provides a summary of model estimated with the \code{jointLPM} function.
 #' 
-#' @param object an object inheriting from class \code{JLPM} for a joint latent process model.
+#' @param object an object inheriting from class \code{jointLPM} for a joint latent process model.
 #' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
 #' 
-#' @return Print a summary of JLPM estimations 
-#' with matrices containing the estimates, their standard errors, Wald statistics and p-values
-#' for the parameter of each submodel. #TS  
+#' @return Returns invisibily a list of two matrices containing the estimates, their standard errors,
+#' Wald statistics and associated p-values for the survival submodel and for the mixed model's fixed effects. 
 #' 
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 
@@ -31,7 +30,7 @@ summary.jointLPM <- function(object,...)
     dput(cl)
     cat(" \n")
 
-    posfix <- eval(cl$posfix)
+    posfix <- object$posfix
 
     cat("Statistical Model:", "\n")
     cat(paste("     Dataset:", as.character(as.expression(x$call$data))),"\n")
@@ -41,6 +40,7 @@ summary.jointLPM <- function(object,...)
     cat(paste("     Number of parameters:", length(x$best))," \n")
     if(length(posfix)) cat(paste("     Number of estimated parameters:", length(x$best)-length(posfix))," \n")
 
+    tTable <- list(survModel=NULL, mixedModel=NULL)
 
     nbevt <- x$N[14]
     if(nbevt>0)
@@ -237,6 +237,8 @@ summary.jointLPM <- function(object,...)
                                         paste(paste(rep(" ",max(maxch[2]-2,0)),collapse=""),"Se",sep=""),
                                         paste(paste(rep(" ",max(maxch[3]-4,0)),collapse=""),"Wald",sep=""),
                                         paste(paste(rep(" ",max(maxch[4]-7,0)),collapse=""),"p-value",sep="")))
+
+                tTable[[1]] <- tmp
                 cat("\n")
                 print(tmp,quote=FALSE,na.print="")
                 cat("\n")
@@ -318,7 +320,7 @@ summary.jointLPM <- function(object,...)
                         }
                 }
             
-            tTable <- tmp
+            tTable[[2]] <- tmp
 
             if((nef>0) & any(c(nrisqtot+nvarxevt+nasso+1:nef) %in% posfix))
                 {      
