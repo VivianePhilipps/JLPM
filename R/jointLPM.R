@@ -17,7 +17,7 @@
 #' of the underlying process as a linear predictor in the proportional hazard survival model.
 #' Parameters of the measurement models, of the latent process mixed model and of the 
 #' survival model are estimated simultaneously using a maximum likelihood method,
-#' through a Marquardt-Levenberg algorithm. #TS
+#' through a Marquardt-Levenberg algorithm.
 #' 
 #' 
 #' 
@@ -341,7 +341,7 @@
 #' 
 #' Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 #' Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
-#' R package marqLevAlg   arXiv:2009.03840  #TS
+#' R package marqLevAlg   arXiv:2009.03840  
 #' 
 #' @examples
 #' #### Examples with paquid data from R-package lcmm
@@ -402,7 +402,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(!is.numeric(data[,subject])) stop("The argument subject must be numeric")
     if(all(link %in% c("linear","beta","thresholds")) & !is.null(intnodes)) stop("Intnodes should only be specified with splines links")
     if(!(na.action%in%c(1,2)))stop("only 1 for 'na.omit' or 2 for 'na.fail' are required in na.action argument")
-    if(!(sharedtype%in%c('RE','CL')))stop("The value of argument sharedtype must be 'RE' (for shared random effects) or 'CL' (for shared latent process current level)") # TS
+    if(!(sharedtype%in%c('RE','CL')))stop("The value of argument sharedtype must be 'RE' (for shared random effects) or 'CL' (for shared latent process current level)")
     if(missing(var.time) | length(var.time)!=1)stop("The argument var.time is missing or is not of length 1")
     if(!(var.time %in% colnames(data))) stop("Unable to find variable 'var.time' in 'data'")
     if(sharedtype == 'CL' & missing(cor)==FALSE) print("WARNING : wi not computed on current level prediction 'cause considered not shared")

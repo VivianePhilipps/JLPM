@@ -271,7 +271,7 @@ the random effect from the mixed model or the predicted current level
 of the underlying process as a linear predictor in the proportional hazard survival model.
 Parameters of the measurement models, of the latent process mixed model and of the 
 survival model are estimated simultaneously using a maximum likelihood method,
-through a Marquardt-Levenberg algorithm. #TS
+through a Marquardt-Levenberg algorithm.
 }
 \details{
 A. THE MEASUREMENT MODELS
@@ -452,7 +452,7 @@ of informative dropout   arXiv:2110.02612
 
 Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
-R package marqLevAlg   arXiv:2009.03840  #TS
+R package marqLevAlg   arXiv:2009.03840
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
