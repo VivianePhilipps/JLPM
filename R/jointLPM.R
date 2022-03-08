@@ -381,7 +381,7 @@
 jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
                 survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype='RE',
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
-                B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=FALSE,
+                B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=NULL,
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE,
                 nproc=1, clustertype=NULL)
 {
@@ -1584,14 +1584,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     if(length(posfix)==NPM) stop("No parameter to estimate")
     
-    
-    ## pour H restreint
-    if(partialH) stop("partialH is not supported with mla optimization")
-    Hr <- as.numeric(partialH)
-    pbH <- rep(0,NPM)
-    pbH[grep("I-splines",names(b))] <- 1
-    pbH[posfix] <- 0
-    if(sum(pbH)==0 & Hr==1) stop("No partial Hessian matrix can be defined")
+    if(!all(partialH %in% 1:NPM)) stop(paste("partialH should contain indices between 1 and",NPM))
     
     # varcov RE
     if(nvc!=0)
@@ -1655,7 +1648,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                    clustertype=clustertype,.packages=NULL,
                    epsa=convB,epsb=convL,epsd=convG,
                    digits=8,print.info=verbose,blinding=FALSE,
-                   multipleTry=25,file="",
+                   multipleTry=25,file="",partialH=partialH,
                    nproc=nproc,maxiter=maxiter,minimize=FALSE,
                    Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
                    ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
@@ -1688,48 +1681,18 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
     {
-        if(out$conv==3)
-        {
-            mr <- NPM-sum(pbH)-length(posfix)
-            Vr <- matrix(0,mr,mr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            Vr <- t(Vr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            V <- matrix(NA,NPM,NPM)
-            V[setdiff(1:NPM,c(which(pbH==1),posfix)),setdiff(1:NPM,c(which(pbH==1),posfix))] <- Vr
-            V[,posfix] <- 0
-            V[posfix,] <- 0
-            V <- V[upper.tri(V,diag=TRUE)]
-        }
-        else
-        {
-            mr <- NPM-length(posfix)
-            Vr <- matrix(0,mr,mr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            Vr <- t(Vr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            V <- matrix(0,NPM,NPM)
-            V[setdiff(1:NPM,posfix),setdiff(1:NPM,posfix)] <- Vr
-            V <- V[upper.tri(V,diag=TRUE)]
-        }
+        mr <- NPM-length(posfix)
+        Vr <- matrix(0,mr,mr)
+        Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+        Vr <- t(Vr)
+        Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
+        V <- matrix(0,NPM,NPM)
+        V[setdiff(1:NPM,posfix),setdiff(1:NPM,posfix)] <- Vr
+        V <- V[upper.tri(V,diag=TRUE)]
     }
     else
     {
-        if(out$conv==3)
-        {
-            mr <- NPM-sum(pbH)
-            Vr <- matrix(0,mr,mr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            Vr <- t(Vr)
-            Vr[upper.tri(Vr,diag=TRUE)] <- out$V[1:(mr*(mr+1)/2)]
-            V <- matrix(NA,NPM,NPM)
-            V[setdiff(1:NPM,which(pbH==1)),setdiff(1:NPM,which(pbH==1))] <- Vr
-            V <- V[upper.tri(V,diag=TRUE)]
-        }
-        else
-        {
-            V <- out$V
-        }
+        V <- out$V
     }
     
     
