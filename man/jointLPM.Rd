@@ -35,7 +35,7 @@ jointLPM(
   convB = 1e-04,
   convL = 1e-04,
   convG = 1e-04,
-  partialH = FALSE,
+  partialH = NULL,
   nsim = 100,
   range = NULL,
   verbose = TRUE,
