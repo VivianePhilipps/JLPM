@@ -11,6 +11,9 @@
 
 \item{...}{further arguments to be passed to or from other methods. They are ignored in this function.}
 }
+\value{
+the function is used for its side effects, no value is returned.
+}
 \description{
 This function provides a brief summary of model estimated with the \code{jointLPM} function.
 }

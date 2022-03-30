@@ -214,8 +214,8 @@ returned. Default to FALSE, data are not returned.}
 See \code{parallel::makeCluster} for possible values.}
 }
 \value{
-A list is returned containing some internal information used in related
-functions. Users may investigate the following elements : 
+An object of class "jointLPM" is returned containing some internal information
+used in related functions. Users may investigate the following elements : 
 \item{ns}{number of grouping units in the dataset} 
 \item{loglik}{log-likelihood of the model} 
 \item{best}{vector of parameter estimates in the same order as specified in 
@@ -315,8 +315,9 @@ a. BASELINE RISK FUNCTIONS
 For the baseline risk functions, the following parameterizations were considered. 
 
 1. With the "Weibull" function: 2 parameters are necessary w_1 and w_2 so that 
-the baseline risk function a_0(t) = w_1^2*w_2^2*(w_1^2*t)^(w_2^2-1) if logscale=FALSE 
-and a_0(t) = exp(w_1)*exp(w_2)(t)^(exp(w_2)-1) if logscale=TRUE.
+the baseline risk function a_0(t) = w_1^2*w_2^2*(w_1^2*t)^(w_2^2-1) if logscale=FALSE  
+and \cr
+a_0(t) = exp(w_1)*exp(w_2)(t)^(exp(w_2)-1) if logscale=TRUE.
 
 2. with the "piecewise" step function and nz nodes (y_1,...y_nz), nz-1 parameters 
 are necesssary p_1,...p_nz-1 so that the baseline risk function a_0(t) = p_j^2 
@@ -417,8 +418,31 @@ library(lcmm)
 paq <- paquid[which(paquid$age_init<paquid$agedem),]
 paq$age65 <- (paq$age-65)/10
 
-\dontrun{
+#### Example with one Gaussian marker :
+## We model the cognitive test IST according to age, sexe and eduction level. We assume
+## a Weibull distribution for the time to dementia and link the longitudinal and survival
+## data using the random effects.
+## We provide here the call to the jointLPM function without optimization (maxiter=0). The
+## results should therefore not be interpreted.
+M0 <- jointLPM(fixed = IST~age65*(male+CEP),
+                random=~age65,
+                idiag=FALSE,
+                subject="ID",
+                link="linear",
+                survival=Surv(age_init,agedem,dem)~male,
+                sharedtype='RE',
+                hazard="Weibull",
+                data=paq,
+                var.time="age65",
+                maxiter=0)
+M0$best ## these are the initial values of each of the 15 parameters
+
+\donttest{ 
 ## Estimation with one Gaussian marker
+## We remove the maxiter=0 option to estimate the model. We specify initial values
+## to reduce the runtime, but this can take several minutes.
+binit1 <- c(0.1039, 5.306, -0.1887, -1.0355, -4.3817, -1.0543, -0.1161, 0.8588,
+0.0538, -0.1722, -0.2224, 0.3296, 30.7768, 4.6169, 0.7396)
 M1 <- jointLPM(fixed = IST~age65*(male+CEP),
                 random=~age65,
                 idiag=FALSE,
@@ -428,21 +452,32 @@ M1 <- jointLPM(fixed = IST~age65*(male+CEP),
                 sharedtype='RE',
                 hazard="Weibull",
                 data=paq,
-                var.time="age65")
+                var.time="age65",
+                B=binit1)
+## Optimized the parameters to be interpreted :
 summary(M1)
 
-#### Estimation with one ordinal marker
-M2 <- jointLPM(fixed = HIER~age65*male,
-                random = ~age65,
+
+#### Estimation with one ordinal marker :
+## We consider here the 4-level hierarchical scale of dependence HIER and use "thresholds"
+## to model it as an ordinal outcome. We assume an association between the current level
+## of dependency and the risk of dementia through the option sharedtype="CL".
+binit2 <- c(0.0821, 2.4492, 0.1223, 1.7864, 0.0799, -0.2864, 0.0055, -0.0327, 0.0017,
+0.3313, 0.9763, 0.9918, -0.4402)
+M2 <- jointLPM(fixed = HIER~I(age-65)*male,
+                random = ~I(age-65),
                 subject = "ID", 
                 link = "thresholds",
                 survival = Surv(age_init,agedem,dem)~male,
                 sharedtype = 'CL',
-                var.time = "age65",
+                var.time = "age",
                 data = paq, 
                 methInteg = "QMC", 
-                nMC = 1000)
-summary(M2)}
+                nMC = 1000,
+                B=binit2)
+summary(M2)
+
+}
 
 }
 \references{
@@ -452,7 +487,7 @@ of informative dropout   arXiv:2110.02612
 
 Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
-R package marqLevAlg   arXiv:2009.03840
+R package marqLevAlg, The R Journal 13:2.
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima

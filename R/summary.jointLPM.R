@@ -5,8 +5,9 @@
 #' @param object an object inheriting from class \code{jointLPM} for a joint latent process model.
 #' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
 #' 
-#' @return Returns invisibily a list of two matrices containing the estimates, their standard errors,
-#' Wald statistics and associated p-values for the survival submodel and for the mixed model's fixed effects. 
+#' @return The function is mainly used for its side effects. It returns invisibily a list of two matrices
+#' containing the estimates, their standard errors, Wald statistics and associated p-values for the survival
+#' submodel (first element of the list) and for the mixed model's fixed effects (second element). 
 #' 
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 

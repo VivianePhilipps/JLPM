@@ -4,6 +4,7 @@
 #' 
 #' @param x an object inheriting from class \code{jointLPM} for a joint latent process model.
 #' @param ... further arguments to be passed to or from other methods. They are ignored in this function.
+#' @return the function is used for its side effects, no value is returned.
 #' 
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 

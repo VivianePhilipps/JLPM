@@ -12,8 +12,9 @@
 \item{...}{further arguments to be passed to or from other methods. They are ignored in this function.}
 }
 \value{
-Returns invisibily a list of two matrices containing the estimates, their standard errors,
-Wald statistics and associated p-values for the survival submodel and for the mixed model's fixed effects.
+The function is mainly used for its side effects. It returns invisibily a list of two matrices
+containing the estimates, their standard errors, Wald statistics and associated p-values for the survival
+submodel (first element of the list) and for the mixed model's fixed effects (second element).
 }
 \description{
 This function provides a summary of model estimated with the \code{jointLPM} function.
