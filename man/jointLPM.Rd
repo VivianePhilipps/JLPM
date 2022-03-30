@@ -462,6 +462,7 @@ summary(M1)
 ## We consider here the 4-level hierarchical scale of dependence HIER and use "thresholds"
 ## to model it as an ordinal outcome. We assume an association between the current level
 ## of dependency and the risk of dementia through the option sharedtype="CL".
+## We use a parallel optimization on 2 cores to reduce computation time.
 binit2 <- c(0.0821, 2.4492, 0.1223, 1.7864, 0.0799, -0.2864, 0.0055, -0.0327, 0.0017,
 0.3313, 0.9763, 0.9918, -0.4402)
 M2 <- jointLPM(fixed = HIER~I(age-65)*male,
@@ -474,7 +475,8 @@ M2 <- jointLPM(fixed = HIER~I(age-65)*male,
                 data = paq, 
                 methInteg = "QMC", 
                 nMC = 1000,
-                B=binit2)
+                B=binit2,
+                nproc=2)
 summary(M2)
 
 }
