@@ -431,8 +431,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(missing(random)) stop("At least one random effect is required")
     if(random==~-1) stop("At least one random effect is required")
     if(missing(fixed)) stop("The argument fixed must be specified in any model")
-    if(class(fixed)!="formula") stop("The argument fixed must be a formula")
-    if(class(random)!="formula") stop("The argument random must be a formula")
+    if(!inherits(fixed,"formula")) stop("The argument fixed must be a formula")
+    if(!inherits(random,"formula")) stop("The argument random must be a formula")
     if(missing(data)){ stop("The argument data should be specified and defined as a data.frame")}
     if(nrow(data)==0) stop("Data should not be empty")
     if(missing(subject)){ stop("The argument subject must be specified")}
