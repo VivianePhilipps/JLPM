@@ -1748,7 +1748,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     {
         id <- 1:nea
         indice <- rep(id+id*(id-1)/2)
-        Cholesky[indice] <- c(1,out$best[nrisqtot+nvarxevt+nef+ncontr+1:nvc])
+        Cholesky[indice] <- c(1,out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc])
         out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc] <- out$best[nrisqtot+nvarxevt+nasso+nef+ncontr+1:nvc]**2
     }
     
