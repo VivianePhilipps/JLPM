@@ -52,7 +52,8 @@ convert <- function(object, to)
             warning("the outcome is treated as Gaussian")
             z$link <- "linear"
         }
-
+        if(object$linktype[1]==0) z$link <- "linear"
+        
         index <- c(1:(nrisqtot+nvarxevt),
                    nrisqtot+nvarxevt+nasso + 1:nef,
                    nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1,
@@ -68,12 +69,12 @@ convert <- function(object, to)
 
         ## attention : dans jointLPM Var(u0)=1 alors que dans Jointlcmm Var(E)=1
         ## donc on divise la variance des EA par Var(E). Sinon pb avec chol(varcov).
-        object$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1] <- 1/object$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1]^2 
         if(nvc>0) object$best[nrisqtot+nvarxevt+nasso+nef+ncontr + 1:nvc] <- object$best[nrisqtot+nvarxevt+nasso+nef+ncontr + 1:nvc]/object$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1]^2
+        object$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1] <- 1/object$best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea + 1]^2 
         
         B <- object$best[index]
     }
-    
+
     z$B <- B
     m <- eval(z)
     m$conv <- object$conv
