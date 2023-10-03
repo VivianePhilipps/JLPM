@@ -69,7 +69,7 @@ summary.jointLPM <- function(object,...)
             }
             if (x$typrisq[ke]==3)
             {
-                cat("        M-splines constant baseline risk function with nodes \n")
+                cat("        M-splines baseline risk function with nodes \n")
                 cat("        ",x$hazardnodes[1:x$nz[ke],ke]," \n")
             }
                         
