@@ -1,15 +1,15 @@
 Package: JLPM
 Type: Package
 Title: Joint Latent Process Models
-Version: 1.0.1
-Date: 2022-03-30
+Version: 1.0.2
+Date: 2023-10-05
 Authors@R: c(person("Viviane", "Philipps", role=c("aut", "cre"), email="Viviane.Philipps@u-bordeaux.fr"),
              person("Tiphaine", "Saulnier", role="aut"),
 	     person("Cecile", "Proust-Lima", role="aut"))
-Description: Estimation of extended joint models with shared random effects. Longitudinal data are handled in latent process models for continuous (Gaussian or curvilinear) and ordinal outcomes while proportional hazard models are used for the survival part. We propose a frequentist approach using maximum likelihood estimation. See Saulnier et al, 2021 <arXiv:2110.02612>.
+Description: Estimation of extended joint models with shared random effects. Longitudinal data are handled in latent process models for continuous (Gaussian or curvilinear) and ordinal outcomes while proportional hazard models are used for the survival part. We propose a frequentist approach using maximum likelihood estimation. See Saulnier et al, 2022 <doi:10.1016/j.ymeth.2022.03.003>.
 License: GPL (>= 2.0)
-Depends: R (>= 2.14.0), survival (>= 2.37-2), randtoolbox, stringr, marqLevAlg (>= 2.0.6)
-Suggests: lcmm
+Depends: R (>= 2.14.0), lcmm
+Imports: survival (>= 2.37-2), randtoolbox, stringr, marqLevAlg (>= 2.0.6)
 BugReports: https://github.com/VivianePhilipps/JLPM/issues
 LazyLoad: yes
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.1

@@ -14,9 +14,9 @@
 #' @author Cecile Proust-Lima, Viviane Philipps, Tiphaine Saulnier
 #' 
 #' @references
-#' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2021).
+#' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2022).
 #' Joint models for the longitudinal analysis of measurement scales in the presence 
-#' of informative dropout, arXiv:2110.02612.
+#' of informative dropout, Methods 203.
 #' 
 #' Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 #' Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
@@ -31,6 +31,7 @@
 #' @importFrom stringr str_detect
 #' @importFrom parallel clusterEvalQ clusterExport clusterSetRNGStream makeCluster parApply stopCluster
 #' @importFrom marqLevAlg mla
+#' @importFrom lcmm multlcmm Jointlcmm
 #' @useDynLib JLPM, .registration=TRUE, .fixes="C_"
 NULL
 
