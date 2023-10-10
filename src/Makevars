@@ -1,6 +1,6 @@
 PKG_LIBS = $(BLAS_LIBS) $(FLIBS)
 
-CSRC = init.c
+CSRC = init.c runiran.c
 FSRC =  compute.f90 loglik.f90
 
 # Define order of compilation
@@ -11,3 +11,4 @@ $(SHLIB): $(OBJECTS)
 
 #Setup dependencies for parallel make
 loglik.o: compute.o
+compute.o: runiran.o

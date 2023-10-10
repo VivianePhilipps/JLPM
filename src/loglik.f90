@@ -95,6 +95,10 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   double precision,external::vrais
 
 
+  !! appel GetRNGstate() de R
+  call getrand()
+  
+
   maxmes=0
   do i=1,ns0
      mi=sum(nmes0(i,:))
@@ -443,6 +447,10 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   
 1589 continue
 
+  !! appel PutRNGstate() de R
+  call putrand()
+
+  
   if (any(typrisq.eq.3)) then
      deallocate(Tmm,Tmm1,Tmm2,Tmm3,Tim,Tim1,Tim2,Tim3,Tmm0,    &
           Tmm01,Tmm02,Tmm03,Tim0,Tim01,Tim02,Tim03,Tmmt,Tmmt1,     &
