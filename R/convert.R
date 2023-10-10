@@ -1,3 +1,16 @@
+#' Conversion
+#'
+#' This function converts a jointLPM object to an object of type \code{multlcmm} or
+#' \code{Jointlcmm} from lcmm package.
+#' The conversion to \code{multlcmm} unable the use of the dedicated postfit and
+#' predictions functions implemented in the lcmm package (plot, predictL, predictY,
+#' predictlink, predictYcond, fitY, VarExpl).
+#' The conversion to \code{Jointlcmm} permits the use of functions cuminc and
+#' plot (with options "baselinerisk" or "survival").
+#'
+#' @param object an object of class \code{jointLPM}
+#' @param to character. Either "multlcmm" or "Jointlcmm", indicating to which type the object should be converted.
+#' @return an object of class \code{multlcmm} or \code{Jointlcmm}.
 convert <- function(object, to)
 {
     if(!(to %in% c("multlcmm", "Jointlcmm"))) stop("only conversions to multlcmm or Jointlcmm are implemented")
