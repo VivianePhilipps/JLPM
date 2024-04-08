@@ -150,7 +150,7 @@ summary.jointLPM <- function(object,...)
             ntrtot <- x$N[10]
             nalea <- x$N[11]
             ny <- x$N[12]
-            nbevt <- x$N[13]
+            nbevt <- x$N[14]
             NPM <- length(x$best)
             
             

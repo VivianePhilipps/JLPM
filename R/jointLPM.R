@@ -663,10 +663,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     
     ## remplacer les NA de TimeDepVar par Tevent
-    Tint <- Tevent
-    nvdepsurv <- 0  
-    if(!is.null(nom.timedepvar))
-    {
+    if((nbevt>0)){
+      Tint <- Tevent
+      nvdepsurv <- 0  
+      if(!is.null(nom.timedepvar))
+      {
         Tint <- newdata[,nom.timedepvar]
         Tint[(is.na(Tint))] <- Tevent[(is.na(Tint))]
         Tint[Tint>Tevent] <- Tevent[Tint>Tevent]
@@ -674,18 +675,20 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         nvdepsurv <- 1
         if (length(Tint[Tint<Tevent])==0)
         {
-            stop("TimeDepVar is always greater than Time of Event. \n")  
-            nvdepsurv <- 0
+          stop("TimeDepVar is always greater than Time of Event. \n")  
+          nvdepsurv <- 0
         }
         if (length(Tint[Tint>Tentry])==0)
         {
-            Tint <- Tevent
-            stop("TimeDepVar is always lower than Time of Entry (0 by default). \n")
-            nvdepsurv  <- 0
+          Tint <- Tevent
+          stop("TimeDepVar is always lower than Time of Entry (0 by default). \n")
+          nvdepsurv  <- 0
         }
         
         newdata[,nom.timedepvar] <- Tint 
+      }
     }
+    
     
     dataSurv <- NULL
     if((nbevt>0))
@@ -1015,163 +1018,165 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     outcome <- matYXord[,4]
     indiceY0 <- as.numeric(matYXord[,3])
     
-    dataSurv <- dataSurv[which(dataSurv[,1] %in% IND),]
-    dataSurv <- dataSurv[order(dataSurv[,1]),]
-    nmes <- as.vector(table(dataSurv[,1]))
-    data.surv <- apply(dataSurv[cumsum(nmes),-1],2,as.numeric)
-    tsurv0 <- data.surv[,1]
-    tsurv <- data.surv[,2]
-    devt <- data.surv[,3]
-    tsurvint <- data.surv[,4]
-    ind_survint <- (tsurvint<tsurv) + 0
-    
-    ## test de hazard
-    arghaz <- hazard
-    hazard <- rep(hazard,length.out=nbevt)
-    if(any(hazard %in% c("splines","Splines")))
-    {
+    if((nbevt>0)){
+      
+      dataSurv <- dataSurv[which(dataSurv[,1] %in% IND),]
+      dataSurv <- dataSurv[order(dataSurv[,1]),]
+      nmes <- as.vector(table(dataSurv[,1]))
+      data.surv <- apply(dataSurv[cumsum(nmes),-1],2,as.numeric)
+      tsurv0 <- data.surv[,1]
+      tsurv <- data.surv[,2]
+      devt <- data.surv[,3]
+      tsurvint <- data.surv[,4]
+      ind_survint <- (tsurvint<tsurv) + 0
+      
+      ## test de hazard
+      arghaz <- hazard
+      hazard <- rep(hazard,length.out=nbevt)
+      if(any(hazard %in% c("splines","Splines")))
+      {
         hazard[which(hazard %in% c("splines","Splines"))] <- "5-quant-splines"
-    }
-    if(any(hazard %in% c("piecewise","Piecewise")))
-    {
+      }
+      if(any(hazard %in% c("piecewise","Piecewise")))
+      {
         hazard[which(hazard %in% c("piecewise","Piecewise"))] <- "5-quant-piecewise"
-    }
-    
-    haz13 <- strsplit(hazard[which(!(hazard=="Weibull"))],"-")
-    if(any(sapply(haz13,length)!=3)) stop("Invalid argument hazard")
-    
-    nz <- rep(2,nbevt)
-    locnodes <- NULL
-    typrisq <- rep(2,nbevt)
-    nprisq <- rep(2,nbevt)
-    
-    nznodes <- 0 #longueur de hazardnodes
-    ii <- 0
-    if(any(hazard!="Weibull"))
-    {
+      }
+      
+      haz13 <- strsplit(hazard[which(!(hazard=="Weibull"))],"-")
+      if(any(sapply(haz13,length)!=3)) stop("Invalid argument hazard")
+      
+      nz <- rep(2,nbevt)
+      locnodes <- NULL
+      typrisq <- rep(2,nbevt)
+      nprisq <- rep(2,nbevt)
+      
+      nznodes <- 0 #longueur de hazardnodes
+      ii <- 0
+      if(any(hazard!="Weibull"))
+      {
         
         for (i in 1:nbevt)
         {
-            if(hazard[i]=="Weibull") next;
-            
-            ii <- ii+1
-            
-            nz[i] <- as.numeric(haz13[[ii]][1])
-            if(nz[i]<3) stop("At least 3 nodes are required")
-            typrisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),3,1)
-            nprisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),nz[i]+2,nz[i]-1)
-            locnodes <- c(locnodes, haz13[[ii]][2])
-            if(!(haz13[[ii]][3] %in% c("splines","Splines","piecewise","Piecewise"))) stop("Invalid argument hazard")
-            
-            if((haz13[[ii]][2]=="manual"))
-            {
-                nznodes <- nznodes + nz[i]-2
-            }
-            
-            if(!all(locnodes %in% c("equi","quant","manual"))) stop("The location of the nodes should be 'equi', 'quant' or 'manual'")
+          if(hazard[i]=="Weibull") next;
+          
+          ii <- ii+1
+          
+          nz[i] <- as.numeric(haz13[[ii]][1])
+          if(nz[i]<3) stop("At least 3 nodes are required")
+          typrisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),3,1)
+          nprisq[i] <- ifelse(haz13[[ii]][3] %in% c("splines","Splines"),nz[i]+2,nz[i]-1)
+          locnodes <- c(locnodes, haz13[[ii]][2])
+          if(!(haz13[[ii]][3] %in% c("splines","Splines","piecewise","Piecewise"))) stop("Invalid argument hazard")
+          
+          if((haz13[[ii]][2]=="manual"))
+          {
+            nznodes <- nznodes + nz[i]-2
+          }
+          
+          if(!all(locnodes %in% c("equi","quant","manual"))) stop("The location of the nodes should be 'equi', 'quant' or 'manual'")
         }
         
         if(!is.null(hazardnodes))
         {
-            if(!any(locnodes == "manual"))  stop("hazardnodes should be NULL if the nodes are not chosen manually")
-            
-            if(length(hazardnodes) != nznodes) stop(paste("Vector hazardnodes should be of length",nznodes))
+          if(!any(locnodes == "manual"))  stop("hazardnodes should be NULL if the nodes are not chosen manually")
+          
+          if(length(hazardnodes) != nznodes) stop(paste("Vector hazardnodes should be of length",nznodes))
         }
-    }
-    else
-    {
+      }
+      else
+      {
         if(!is.null(hazardnodes)) stop("hazardnodes should be NULL if Weibull baseline risk functions are chosen")
-    }
-    
-    
-    if(nbevt>1 & length(arghaz)==1 & nznodes>0)
-    {
+      }
+      
+      
+      if(nbevt>1 & length(arghaz)==1 & nznodes>0)
+      {
         hazardnodes <- rep(hazardnodes,length.out=nznodes*nbevt)
-    }
-    
-    nrisqtot <- sum(nprisq)
-    
-    zi <- matrix(0,nrow=max(nz),ncol=nbevt)
-    nb <- 0
-    
-    minT1 <- 0
-    maxT1 <- max(tsurv)
-    tsurvevt <- tsurv
-    
-    if(idtrunc==1)
-    {
+      }
+      
+      nrisqtot <- sum(nprisq)
+      
+      zi <- matrix(0,nrow=max(nz),ncol=nbevt)
+      nb <- 0
+      
+      minT1 <- 0
+      maxT1 <- max(tsurv)
+      tsurvevt <- tsurv
+      
+      if(idtrunc==1)
+      {
         minT1 <- min(tsurv,tsurv0)
         maxT1 <- max(tsurv,tsurv0)
-    }
-    
-    ## arrondir
-    minT2 <- round(minT1,3)
-    if(minT1<minT2) minT2 <- minT2-0.001
-    minT <- minT2
-    
-    maxT2 <- round(maxT1,3)
-    if(maxT1>maxT2) maxT2 <- maxT2+0.001
-    maxT <- maxT2
-    
-    if(length(hazardrange)){
-      if(hazardrange[1]>minT) stop(paste("hazardrange[1] should be <=",minT))
-      if(hazardrange[2]>maxT) stop(paste("hazardrange[2] should be >=",maxT))
-      minT <- hazardrange[1]
-      maxT <- hazardrange[2]
-    }
-    
-    startWeib <- rep(0,nbevt)
-    startWeib[which(typrisq==2)] <- rep(startWeibull, length.out=length(which(typrisq==2)))
-    ii <- 0
-    for(i in 1:nbevt)
-    {
+      }
+      
+      ## arrondir
+      minT2 <- round(minT1,3)
+      if(minT1<minT2) minT2 <- minT2-0.001
+      minT <- minT2
+      
+      maxT2 <- round(maxT1,3)
+      if(maxT1>maxT2) maxT2 <- maxT2+0.001
+      maxT <- maxT2
+      
+      if(length(hazardrange)){
+        if(hazardrange[1]>minT) stop(paste("hazardrange[1] should be <=",minT))
+        if(hazardrange[2]>maxT) stop(paste("hazardrange[2] should be >=",maxT))
+        minT <- hazardrange[1]
+        maxT <- hazardrange[2]
+      }
+      
+      startWeib <- rep(0,nbevt)
+      startWeib[which(typrisq==2)] <- rep(startWeibull, length.out=length(which(typrisq==2)))
+      ii <- 0
+      for(i in 1:nbevt)
+      {
         if(typrisq[i]==2)
         {
-            if(minT < startWeib[i]) stop("Some entry or event times are bellow startWeibull")
-            zi[1:2,i] <- c(startWeib[i],maxT)
+          if(minT < startWeib[i]) stop("Some entry or event times are bellow startWeibull")
+          zi[1:2,i] <- c(startWeib[i],maxT)
         }
         else
         {
-            ii <- ii+1
-            
-            if(locnodes[ii]=="manual")
-            {
-                zi[1:nz[i],i] <- c(minT,hazardnodes[nb+1:(nz[i]-2)],maxT)
-                nb <- nb + nz[i]-2
-            }
-            if(locnodes[ii]=="equi")
-            {
-                zi[1:nz[i],i] <- seq(minT,maxT,length.out=nz[i])
-            }
-            if(locnodes[ii]=="quant")
-            {
-                pi <- c(1:(nz[i]-2))/(nz[i]-1)
-                qi <- quantile(tsurvevt,prob=pi)
-                zi[1,i] <- minT
-                zi[2:(nz[i]-1),i] <- qi
-                zi[nz[i],i] <- maxT
-            }
+          ii <- ii+1
+          
+          if(locnodes[ii]=="manual")
+          {
+            zi[1:nz[i],i] <- c(minT,hazardnodes[nb+1:(nz[i]-2)],maxT)
+            nb <- nb + nz[i]-2
+          }
+          if(locnodes[ii]=="equi")
+          {
+            zi[1:nz[i],i] <- seq(minT,maxT,length.out=nz[i])
+          }
+          if(locnodes[ii]=="quant")
+          {
+            pi <- c(1:(nz[i]-2))/(nz[i]-1)
+            qi <- quantile(tsurvevt,prob=pi)
+            zi[1,i] <- minT
+            zi[2:(nz[i]-1),i] <- qi
+            zi[nz[i],i] <- maxT
+          }
         }
-    }
-    
-    
-    ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
-    if(sharedtype == 'RE'){  #gi(bi,t)=bi
+      }
+      
+      
+      ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
+      if(sharedtype == 'RE'){  #gi(bi,t)=bi
         Xpred <- 0
         Xpred_Ti <- 0
         nbXpred <- 0
-    }
-    if(sharedtype == 'CL'){   #gi(bi,t)=niv.courant(t)
+      }
+      if(sharedtype == 'CL'){   #gi(bi,t)=niv.courant(t)
         
         # /!\ si varexp dependante du tps (autre que var.time), prediction impossible
         nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
         nom.var <- nom.var[!str_detect(nom.var,var.time)] # nom.var[!(nom.var == var.time)] # noms des variables, autre que celle incluant var.time
         if(length(nom.var)>0){
-            for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
-                tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
-                if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
-                    stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype='CL' due to impossibility to predict"))
-            }  
+          for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
+            tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
+            if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
+              stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype='CL' due to impossibility to predict"))
+          }  
         }
         
         ## matrices design
@@ -1225,25 +1230,39 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         
         # Xpredcl0 (Ti0, tronc gche)
         if(idtrunc==1){
-            data_tmp[,var.time] <- rep(tsurv0,each=15) # remplacer la variable de temps par T0
-            data_tmp[,var.time] <- (data_tmp[,var.time] - 0) / 2  #centr = centre de l intervalle 0 -> T0i
-            data_tmp$mid_interv_surv <- data_tmp[,var.time]  #hlgth = demi longueur de l intervalle 0 -> T0i
-            data_tmp[,var.time] <- data_tmp[,var.time] + data_tmp$mid_interv_surv * data_tmp$ptGK  #centr+absc ou absc=hlgth*pnt
-            #matrices design
-            mat_ef <- model.matrix(object = fixed2[-2], data = data_tmp) # EF sans contraste et sans outcome,
-            mat_ef <- as.data.frame(mat_ef[,-1])  # et sans intercept car non-estime
-            mat_ea <- model.matrix(object = random, data = data_tmp) # EA
-            # concatenation
-            Xpredcl0 <- cbind(data_tmp[,var.time],mat_ef,mat_ea)
-            Xpredcl0 <- as.matrix(Xpredcl0)
-            Xpred <- cbind(Xpred,Xpredcl0)
+          data_tmp[,var.time] <- rep(tsurv0,each=15) # remplacer la variable de temps par T0
+          data_tmp[,var.time] <- (data_tmp[,var.time] - 0) / 2  #centr = centre de l intervalle 0 -> T0i
+          data_tmp$mid_interv_surv <- data_tmp[,var.time]  #hlgth = demi longueur de l intervalle 0 -> T0i
+          data_tmp[,var.time] <- data_tmp[,var.time] + data_tmp$mid_interv_surv * data_tmp$ptGK  #centr+absc ou absc=hlgth*pnt
+          #matrices design
+          mat_ef <- model.matrix(object = fixed2[-2], data = data_tmp) # EF sans contraste et sans outcome,
+          mat_ef <- as.data.frame(mat_ef[,-1])  # et sans intercept car non-estime
+          mat_ea <- model.matrix(object = random, data = data_tmp) # EA
+          # concatenation
+          Xpredcl0 <- cbind(data_tmp[,var.time],mat_ef,mat_ea)
+          Xpredcl0 <- as.matrix(Xpredcl0)
+          Xpred <- cbind(Xpred,Xpredcl0)
         }else{
-            Xpredcl0 <- NULL
+          Xpredcl0 <- NULL
         }
         
         nbXpred <- c(nbXpred, ncol(Xpred))
         
+      }
+      
     }
+    else{
+      tsurv0 <- rep(0,length(unique(IND)))
+      tsurv <- rep(0,length(unique(IND))) 
+      devt <- rep(0,length(unique(IND)))
+      tsurvint <- rep(0,length(unique(IND)))
+      ind_survint <- rep(0,length(unique(IND)))
+      #TS
+      Xpred <- rep(0,length(unique(IND))*15)
+      Xpred_Ti <- rep(0,length(unique(IND)))
+      nbXpred <- c(1,1)
+    }
+    
     
     
     ##parametres pour Fortran
