@@ -1115,7 +1115,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     if(length(hazardrange)){
       if(hazardrange[1]>minT) stop(paste("hazardrange[1] should be <=",minT))
-      if(hazardrange[2]>maxT) stop(paste("hazardrange[2] should be >=",maxT))
+      if(hazardrange[2]<maxT) stop(paste("hazardrange[2] should be >=",maxT))
       minT <- hazardrange[1]
       maxT <- hazardrange[2]
     }
