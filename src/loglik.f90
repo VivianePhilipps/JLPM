@@ -52,14 +52,14 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ,ny0,ns0,nv0,nobs0,nmes0,idiag0,ncor0,nalea0&
      ,npm0,b0,nfix0,bfix0,epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0 &
      ,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
-     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,loglik_res)
+     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,expectancy0,loglik_res)
 
   use modirtsre
 
   IMPLICIT NONE
 
   !Declaration des variables en entree
-  integer,intent(in)::nv0,ny0,nMC0,methInteg0,dimMC0,nfix0
+  integer,intent(in)::nv0,ny0,nMC0,methInteg0,dimMC0,nfix0,expectancy0
   integer, intent(in)::ns0,nobs0,idiag0,npm0,ncor0,nalea0
   integer,intent(in)::idtrunc0,logspecif0,nbevt0
   double precision, dimension(ns0),intent(in)::Tentr0,Tevt0
@@ -437,7 +437,9 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      end if
   end if
 
-  ! calcul de la vraisemblance
+  expectancy = expectancy0
+  
+  ! calcul de la vraisemblance (ou esperance de vie)
   loglik_res = vrais(b0,npm0)
 
   
@@ -751,7 +753,7 @@ double precision function vrais_i(b,npm,i)
 
            if (ll.lt.1.or.ll.gt.ntr(yk)-3) then          
               vrais_i=-1.d9
-              print*,"-1.d9 ll<1 ou ll>ntr-3",ll!," ntr=",ntr(yk)," numSPL=",numSPL," y=",Y(nmescur+sumMesYk+j)
+             ! print*,"-1.d9 ll<1 ou ll>ntr-3",ll!," ntr=",ntr(yk)," numSPL=",numSPL," y=",Y(nmescur+sumMesYk+j)
               goto 654
            end if
            if (ll.gt.1) then
@@ -1027,10 +1029,16 @@ double precision function vrais_i(b,npm,i)
                  vrais_Y = vrais_Y * alnorm(binf,.false.)
               else if(indiceY(nmescur+sumMesYk+j).eq.nvalORD(ykord)) then
                  !! si Y=maxY
-                 vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
+                 if(expectancy.eq.0) then
+                    vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
+                 end if
               else
                  !! minY < Y < maxY
-                 vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
+                 if(expectancy.eq.0) then
+                    vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
+                 else
+                    vrais_Y = vrais_Y * alnorm(bsup,.false.)
+                 end if                    
               end if
               !if(i.lt.4) print*,"vrais_Y=",vrais_Y
 
@@ -1068,7 +1076,7 @@ double precision function vrais_i(b,npm,i)
               CALL dsinv(Vi,nmes(i,yk),eps,ier,det)
               if (ier.eq.-1) then
                  vrais_i=-1.d9
-                 print*,"-1.d9 dsinv continu MC"
+                 !print*,"-1.d9 dsinv continu MC"
                  !print*,"b=",b
                  !print*,"bfix=",bfix
                  !print*,"fix=",fix

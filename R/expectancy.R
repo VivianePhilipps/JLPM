@@ -1,90 +1,159 @@
-#' @export
-probaIRT <- function(model, t, Y, X, nmes=length(Y), indiceY, nMC=1000)
-{
-    ## calcule log(P(Y(t)<=y, T>t / X, theta))
+## #' @export
+## probaIRT <- function(model, t, Y, X, nmes=length(Y), indiceY, nMC=1000)
+## {
+##     ## calcule log(P(Y(t)<=y, T>t / X, theta))
     
-    ny <- model$N[12]
-    idlink <- model$linktype
+##     ny <- model$N[12]
+##     idlink <- model$linktype
 
-    Tentr <- 0
-    Devt <- 0
-    idea <- model$idea
-    idg <- model$idg
-    idcor <- model$idcor
-    idcontr <- model$idcontr
-    idsurv <- model$idsurv
-    idtdv <- model$idtdv
-    typrisq <- model$typrisq
-    nz <- model$nz
-    zi <- model$hazardnodes
-    nbevt <- length(model$nevent)
-    idtrunc <- 0
-    logspecif <- model$logspecif
-    nv <- length(model$Names$Xnames)
-    nobs <- length(Y)
-    nea <- sum(idea)
-    idiag <- model$idiag
-    ncor <- model$N[9]
-    nalea <- model$N[11]
-    epsY <- model$epsY
-    nbzitr <- rep(2,ny)
-    nbzitr[which(idlink==2)] <- model$nbnodes
-    zitr <- model$linknodes
-    fix <- rep(0,length(model$best))
-    posfix <- eval(model$call$posfix)
-    if(length(posfix)) fix[posfix] <- 1
-    methInteg <- 3
-    dimMC <- nea + nalea + sum(nmes)*as.numeric(ncor>0)
-    seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
-    npmtot <- length(model$best)
-    btot <- model$best
+##     Tentr <- 0
+##     Devt <- 0
+##     idea <- model$idea
+##     idg <- model$idg
+##     idcor <- model$idcor
+##     idcontr <- model$idcontr
+##     idsurv <- model$idsurv
+##     idtdv <- model$idtdv
+##     typrisq <- model$typrisq
+##     nz <- model$nz
+##     zi <- model$hazardnodes
+##     nbevt <- length(model$nevent)
+##     idtrunc <- 0
+##     logspecif <- model$logspecif
+##     nv <- length(model$Names$Xnames)
+##     nobs <- length(Y)
+##     nea <- sum(idea)
+##     idiag <- model$idiag
+##     ncor <- model$N[9]
+##     nalea <- model$N[11]
+##     epsY <- model$epsY
+##     nbzitr <- rep(2,ny)
+##     nbzitr[which(idlink==2)] <- model$nbnodes
+##     zitr <- model$linknodes
+##     fix <- rep(0,length(model$best))
+##     posfix <- eval(model$call$posfix)
+##     if(length(posfix)) fix[posfix] <- 1
+##     methInteg <- 3
+##     dimMC <- nea + nalea + sum(nmes)*as.numeric(ncor>0)
+##     seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
+##     npmtot <- length(model$best)
+##     btot <- model$best
 
-    nvc <- model$N[7]
-    if(nvc>0)
-    {
-        ## remplacer varcov par cholesky dans btot
+##     nvc <- model$N[7]
+##     if(nvc>0)
+##     {
+##         ## remplacer varcov par cholesky dans btot
 
-        if(idiag==1)
-        {
-            btot[sum(model$N[1:6]) + 1:nvc] <- sqrt(btot[sum(model$N[1:6]) + 1:nvc])
-        }
-        else
-        {
-            btot[sum(model$N[1:6]) + 1:nvc] <- model$cholesky[-1]
-        }
-    }
+##         if(idiag==1)
+##         {
+##             btot[sum(model$N[1:6]) + 1:nvc] <- sqrt(btot[sum(model$N[1:6]) + 1:nvc])
+##         }
+##         else
+##         {
+##             btot[sum(model$N[1:6]) + 1:nvc] <- model$cholesky[-1]
+##         }
+##     }
 
     
-    ind_survint <- 0
+##     ind_survint <- 0
 
-    nvalSPLORD <- rep(1,ny)
-    uniqueY <- NULL
-    for(k in 1:ny)
-    {
-        nvalSPLORD[k] <- length(model$mod[[k]])
+##     nvalSPLORD <- rep(1,ny)
+##     uniqueY <- NULL
+##     for(k in 1:ny)
+##     {
+##         nvalSPLORD[k] <- length(model$mod[[k]])
         
-        if(idlink[k]==3) uniqueY <- c(uniqueY,model$mod[[k]])
-        if(idlink[k]==2) uniqueY <- c(uniqueY,model$zitr[1,k])        
-    }
+##         if(idlink[k]==3) uniqueY <- c(uniqueY,model$mod[[k]])
+##         if(idlink[k]==2) uniqueY <- c(uniqueY,model$zitr[1,k])        
+##     }
     
         
-    proba <- 0
+##     proba <- 0
 
-    .Fortran(C_proba_irtsre,as.double(Y),as.double(X),as.double(Tentr),as.double(t),as.integer(Devt),as.integer(ind_survint),
-     as.integer(idea),as.integer(idg),as.integer(idcor),as.integer(idcontr),as.integer(idsurv),as.integer(idtdv),
-     as.integer(typrisq),as.integer(nz),as.double(zi),as.integer(nbevt),as.integer(idtrunc),as.integer(logspecif),
-     as.integer(ny),as.integer(nv),as.integer(nobs),as.integer(nea),as.integer(nmes),as.integer(idiag),as.integer(ncor),as.integer(nalea),
-     as.double(epsY),as.integer(idlink),as.integer(nbzitr),as.double(zitr),as.integer(uniqueY),as.integer(indiceY),
-     as.integer(nvalSPLORD),as.integer(fix),as.integer(methInteg),as.integer(nMC),as.integer(dimMC),as.double(seqMC),as.integer(npmtot),as.double(btot),res=as.double(proba))$res
-}
+##     .Fortran(C_proba_irtsre,as.double(Y),as.double(X),as.double(Tentr),as.double(t),as.integer(Devt),as.integer(ind_survint),
+##      as.integer(idea),as.integer(idg),as.integer(idcor),as.integer(idcontr),as.integer(idsurv),as.integer(idtdv),
+##      as.integer(typrisq),as.integer(nz),as.double(zi),as.integer(nbevt),as.integer(idtrunc),as.integer(logspecif),
+##      as.integer(ny),as.integer(nv),as.integer(nobs),as.integer(nea),as.integer(nmes),as.integer(idiag),as.integer(ncor),as.integer(nalea),
+##      as.double(epsY),as.integer(idlink),as.integer(nbzitr),as.double(zitr),as.integer(uniqueY),as.integer(indiceY),
+##      as.integer(nvalSPLORD),as.integer(fix),as.integer(methInteg),as.integer(nMC),as.integer(dimMC),as.double(seqMC),as.integer(npmtot),as.double(btot),res=as.double(proba))$res
+## }
 
 
+#' Computation of sojourn time from a joint model
+#'
+#' From a joint shared random effect model with ordinal longitudinal outcomes,
+#' this function computes the time spend before reaching a certain level of the outcome(s).
+#'
+#' 1. Overall expected sojourn time
+#'
+#' The expected time before reaching level k from outcome Y is the integral over time t, from 0 to infinity, of P(Y(t) <= k, T > t), that is int_0^infty P(Y(t) <= k, T > t) dt.
+#'
+#' 2. Expected sojourn time from a time s
+#'
+#' Conditionally on being under level k at time s and being alive at time s, the sojourn time is int_s^infty P(Y(t) <= k, T > t | Y(s) <= k, T > s) dt = int_s^infty P(Y(t) <= k, T > t, Y(s) <= k) dt / P(Y(s) <= k, T > s)
+#' 
+#' 
+#' @param x an object of class \code{jointLPM} representing of joint shared random effects model
+#' @param event a named list specifying the state (ie the outcomes levels) in which the sojourn time is computed.
+#' @param cond an optional named list specifying the initial state at start time (argument \code{start}).
+#' @param newdata a data frame specifying the covariate profile from which the sojourn time is computed.
+#' @param var.time a character string specifying the name of the time variable in the
+#' longitudinal submodel. Note that this time covariate should not be included in newdata.
+#' @param start a numeric value specifying the time from which the sojourn time is computed (the lower bound of the integral over time). Default to 0.
+#' @param nMC an integer giving the number of Monte Carlo simulations used to compute the integral over the random effects.
+#' @param upper a numeric specifying the upper bound of the integral over time. Default to 150.
+#' @param subdivisions passed to the \code{integrate} function.
+#' @param rel.tol passed to the \code{integrate} function.
+#' @param draws logical indicating if confidence interval should be computed. Default to FALSE.
+#' @param ndraws integer giving the number of draws used to compute the confidence interval. Default to 2000.
+#' @param returndraws logical indicating if the \code{ndraws} results should be returned. Default to FALSE.
+#' @param cl either a cluster created with \code{makeCluster} or an integer specifying the number of cores
+#' that should be used for computation. Only used with draws = TRUE.
+#'
+#' @return if \code{draws = FALSE}, returns a single value. If \code{draws = TRUE} and \code{returndraws = FALSE},
+#' returns the median, the 2.5\% and 97.5\% quantiles, the mean, the standard deviation and the number of effective draws.
+#' If \code{draws = TRUE} and \code{returndraws = TRUE}, returns the \code{ndraws} values.
+#' 
+#' @examples
+#' library(lcmm)
+#' paq <- paquid[which(paquid$age_init < paquid$agedem), ]
+#' paq$age65 <- (paq$age - 65) / 10
+#' paq$ageinit65 <- (paq$age_init - 65) / 10
+#' paq$agedem65 <- (paq$agedem - 65) / 10
+#' 
+#' #### Estimation on a joint model with one ordinal marker
+#' \dontrun{
+#' M2 <- jointLPM(fixed = HIER ~ age65 * male,
+#'                 random = ~ age65,
+#'                 subject = "ID", 
+#'                 link = "thresholds",
+#'                 survival = Surv(ageinit65, agedem65, dem) ~ male,
+#'                 sharedtype = 'RE',
+#'                 var.time = "age65",
+#'                 data = paq, 
+#'                 methInteg = "QMC", 
+#'                 nMC = 1000,
+#'                 B = c(0.6, 2.399, -0.409, 2.076, 6.338, 0.994, -0.223, -0.005,
+#'                      -0.299, 0.174, 0.523, 1.044, 1.064, 0.506))
+#'
+#' #### Computation of the expected time before reaching level 2 (HIER = 2)
+#' #### (ie computes int_0^150 P(HIER(t) <= 2, T > t) dt)
+#' expectancy(M2, list(HIER = 2), newdata = data.frame(male = 0), var.time = "age65")
+#'
+#' #### Computation of the expected time before reaching level 2 (HIER = 2),
+#' #### when a level of at most 1 is reached at time 0.5
+#' #### (ie computes int_0.5^150 P(HIER(t) <= 2, T > t | HIER(0.5) <= 1, T > 0.5) dt)
+#' expectancy(M2, list(HIER = 2), cond = list(HIER = 1), start = 0.5,
+#' newdata = data.frame(male = 0), var.time = "age65")
+#' }
+#' 
 #' @export
+#' 
 expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000, upper=150, subdivisions=100L, rel.tol=.Machine$double.eps^0.25, draws=FALSE, ndraws=2000, returndraws=FALSE, cl=NULL)
 {
     if(missing(x)) stop("the model (argument x) is missing")
-    if(!inherits(x,"irt")) stop("use only with irt model")
-
+    if(!inherits(x,"jointLPM")) stop("use only with jointLPM model")
+    if(x$call$sharedtype == 'CL') stop("Not mplemented with current level (sharedtype = 'CL')")
     if(missing(event)) stop("argument event is missing")
 #    if(!missing(cond) & (start==0)) stop("argument cond should only be used with start > 0")
     if(missing(var.time)) stop("argument var.time is missing")
@@ -95,12 +164,12 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
     if((x$conv != 1) & (draws != FALSE))
     {
         draws <- FALSE
-        warning("The mode did not converged properly. No confidence interval can be computed.")
+        warning("The model did not converge properly. No confidence interval can be computed.")
     }
     
     if(any(x$idtdv==1))
     {
-        if(is.na(newdata[,x$Names$TimeDepVar])) newdata[,x$Names$TimeDepVar] <- Inf
+        if(is.na(newdata[,x$Names$TimeDepVar.name])) newdata[,x$Names$TimeDepVar.name] <- Inf
     }
     
     newdata1 <- na.omit(newdata[1,setdiff(x$Names$Xvar,c(var.time)),drop=FALSE])
@@ -142,7 +211,7 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
         }
 
         if(idlink[k]==3) uniqueY <- c(uniqueY,x$mod[[k]])
-        if(idlink[k]==2) uniqueY <- c(uniqueY,x$zitr[1,k])
+        if(idlink[k]==2) uniqueY <- c(uniqueY,x$linknodes[1,k])
         
     }
     
@@ -197,6 +266,10 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
     seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
     npmtot <- length(x$best)
     btot <- x$best
+    b <- btot[which(fix == 0)]
+    bfix <- btot[which(fix == 1)]
+    npm <- length(b)
+    nfix <- length(bfix)
 
     if(nvc>0)
     {
@@ -211,6 +284,8 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
             btot[sum(x$N[1:6]) + 1:nvc] <- x$cholesky[-1]
         }
     }
+
+    
     
     
     fctprob <- function(t, s, x, newdata, Y, fixed, random, contr, surv, survcause, cor,
@@ -219,7 +294,7 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
                         typrisq,nz,zi,nbevt,idtrunc,logspecif,
                         ny,nv,nobs,nea,nmes,idiag,ncor,nalea,
                         epsY,idlink,nbzitr,zitr,uniqueY,indiceY,
-                        nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npmtot,btot)
+                        nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npm,b,nfix,bfix)
     {
         ## if(s>0)
         ## {
@@ -249,11 +324,12 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
 
         Tevt <- t
         ind_survint <- 0
-        if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar] < t)
+        if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
 
+        expectancy <- 1
         proba <- 0
         
-        res <- .Fortran(C_proba_irtsre,
+        res <- .Fortran(C_loglik,
                         as.double(Y),
                         as.double(X0),
                         as.double(Tentr),
@@ -273,13 +349,17 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
                         as.integer(idtrunc),
                         as.integer(logspecif),
                         as.integer(ny),
+                        as.integer(1),
                         as.integer(nv),
                         as.integer(nobs),
-                        as.integer(nea),
                         as.integer(nmes),
                         as.integer(idiag),
                         as.integer(ncor),
                         as.integer(nalea),
+                        as.integer(npm),
+                        as.double(b),
+                        as.integer(nfix),
+                        as.double(bfix),
                         as.double(epsY),
                         as.integer(idlink),
                         as.integer(nbzitr),
@@ -292,8 +372,11 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
                         as.integer(nMC),
                         as.integer(dimMC),
                         as.double(seqMC),
-                        as.integer(npmtot),
-                        as.double(btot),
+                        as.integer(1),
+                        as.integer(0),
+                        as.double(0),
+                        as.double(0),
+                        as.integer(expectancy),
                         res=as.double(proba))$res
 
         if(!is.na(res)){ if(res == -1E-9) res <- NA }
@@ -308,6 +391,8 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
     ## doone : computes the result for a set of parameters
     doone <- function(bdraw)
     {
+        bdrawest <- bdraw[which(fix == 0)]
+        bdrawfix <- bdraw[which(fix == 1)]
        ## b <- btot + Chol %*% bdraw
         res1 <- list(value=NA)
         try(res1 <- integrate(f=fctprobVect, lower=start, upper=upper, s=start, x=x,
@@ -324,7 +409,7 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
                           epsY=epsY,idlink=idlink,nbzitr=nbzitr,zitr=zitr,
                           uniqueY=uniqueY,indiceY=indiceY,
                           nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
-                          dimMC=dimMC,seqMC=seqMC,npmtot=npmtot,btot=bdraw,
+                          dimMC=dimMC,seqMC=seqMC,npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix,
                           rel.tol=rel.tol, subdivisions=subdivisions))
 
         if(class(res1)=="try-error") print(bdraw)
@@ -351,7 +436,7 @@ expectancy <- function(x, event, cond=NULL, newdata, var.time, start=0, nMC=1000
                             indiceY=indiceYcond,
                             nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
                             dimMC=dimMC,seqMC=seqMC,
-                            npmtot=npmtot,btot=bdraw)
+                            npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix)
             
             result <- result/res2            
         }

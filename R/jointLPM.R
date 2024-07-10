@@ -1634,6 +1634,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
     
     sharedtype <- ifelse(sharedtype == 'RE',1,2) #recodage 1 pr RE, 2 pr CL  #TS
+
+    expectancy <- 0
     
     
     
@@ -1647,7 +1649,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                         idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
                         nobs,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
                         idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
-                        methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred)
+                        methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred,expectancy)
         
         out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
                     Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
@@ -1670,7 +1672,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                    epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
                    uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
                    fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
-                   idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred)
+                   idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred,
+                   expectancy0=expectancy)
         
         out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
                     resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
@@ -1925,13 +1928,70 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     return(res)
 }
 
+
+
+
+#' Wraper to the Fortran subroutine that computed the log-likelihood
+#'
+#' Computes the log-likelihood of a jointLPM model
+#'
+#' @param b0 b0
+#' @param Y0 Y0
+#' @param X0 X0
+#' @param Tentr0 Tentr0
+#' @param Tevt0 Tevt0
+#' @param Devt0 Devt0
+#' @param ind_survint0 ind_survint0
+#' @param idea0 idea0
+#' @param idg0 idg0
+#' @param idcor0 idcor0
+#' @param idcontr0 idcontr0
+#' @param idsurv0 idsurv0
+#' @param idtdv0 idtdv0
+#' @param typrisq0 typrisq0
+#' @param nz0 nz0
+#' @param zi0 zi0
+#' @param nbevt0 nbevt0
+#' @param idtrunc0 idtrunc0
+#' @param logspecif0 logspecif0
+#' @param ny0 ny0
+#' @param ns0 ns0
+#' @param nv0 nv0
+#' @param nobs0 nobs0
+#' @param nmes0 nmes0
+#' @param idiag0 idiag0
+#' @param ncor0 ncor0
+#' @param nalea0 nalea0
+#' @param npm0 npm0
+#' @param nfix0 nfix0
+#' @param bfix0 bfix0
+#' @param epsY0 epsY0
+#' @param idlink0 idlink0
+#' @param nbzitr0 nbzitr0
+#' @param zitr0 zitr0
+#' @param uniqueY0 uniqueY0
+#' @param indiceY0 indiceY0
+#' @param nvalSPLORD0 nvalSPLORD0
+#' @param fix0 fix0
+#' @param methInteg0 methInteg0
+#' @param nMC0 nMC0
+#' @param dimMC0 dimMC0
+#' @param seqMC0 seqMC0
+#' @param idst0 idst0
+#' @param nXcl0 nXcl0
+#' @param Xcl_Ti0 Xcl_Ti0
+#' @param Xcl_GK0 Xcl_GK0
+#' @param expectancy0 expectancy0
+#' @return the log-likelihood
+#' 
 #' @export
+#' 
 loglik <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
                    nv0,nobs0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
                    epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,nvalSPLORD0,fix0,
-                   methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0)
+                   methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,expectancy0)
 {
     res <- 0
-    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),loglik_res=as.double(res))$loglik_res
+    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.integer(expectancy0),loglik_res=as.double(res))$loglik_res
 }
