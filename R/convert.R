@@ -11,6 +11,7 @@
 #' @param object an object of class \code{jointLPM}
 #' @param to character. Either "multlcmm" or "Jointlcmm", indicating to which type the object should be converted.
 #' @return an object of class \code{multlcmm} or \code{Jointlcmm}.
+#' @export
 convert <- function(object, to)
 {
     if(!(to %in% c("multlcmm", "Jointlcmm"))) stop("only conversions to multlcmm or Jointlcmm are implemented")
