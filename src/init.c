@@ -4,7 +4,7 @@
 #include "JLPM.h"
 
 static R_FortranMethodDef FortRout[] = {
-  {"loglik", (DL_FUNC) &F77_SUB(loglik), 47},
+  {"loglik", (DL_FUNC) &F77_SUB(loglik), 48},
   {NULL, NULL, 0}
 };
 

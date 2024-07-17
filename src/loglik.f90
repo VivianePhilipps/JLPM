@@ -52,7 +52,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ,ny0,ns0,nv0,nobs0,nmes0,idiag0,ncor0,nalea0&
      ,npm0,b0,nfix0,bfix0,epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0 &
      ,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
-     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,loglik_res)
+     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,expectancy0,loglik_res)
 
   use modirtsre
 
@@ -61,7 +61,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   !Declaration des variables en entree
   integer,intent(in)::nv0,ny0,nMC0,methInteg0,dimMC0,nfix0
   integer, intent(in)::ns0,nobs0,idiag0,npm0,ncor0,nalea0
-  integer,intent(in)::idtrunc0,logspecif0,nbevt0
+  integer,intent(in)::idtrunc0,logspecif0,nbevt0,expectancy0
   double precision, dimension(ns0),intent(in)::Tentr0,Tevt0
   integer, dimension(ns0),intent(in)::ind_survint0,Devt0
   integer, dimension(nv0),intent(in)::idtdv0,idsurv0
@@ -441,6 +441,9 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      end if
   end if
 
+  ! vraisemblance (=0) ou temps de sejour (=1)
+  expectancy = expectancy0
+  
   ! calcul de la vraisemblance
   loglik_res = vrais(b0,npm0)
 
@@ -1035,10 +1038,16 @@ double precision function vrais_i(b,npm,i)
                  vrais_Y = vrais_Y * alnorm(binf,.false.)
               else if(indiceY(nmescur+sumMesYk+j).eq.nvalORD(ykord)) then
                  !! si Y=maxY
-                 vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
+                 if(expectancy.eq.0) then
+                    vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
+                 end if
               else
                  !! minY < Y < maxY
-                 vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
+                 if(expectancy.eq.0) then
+                    vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
+                 else
+                    vrais_Y = vrais_Y * alnorm(bsup,.false.)
+                 end if
               end if
               !if(i.lt.4) print*,"vrais_Y=",vrais_Y
 
