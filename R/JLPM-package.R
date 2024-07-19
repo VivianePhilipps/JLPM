@@ -11,12 +11,13 @@
 #' 
 #' @name JLPM-package
 #' @docType package
-#' @author Cecile Proust-Lima, Viviane Philipps, Tiphaine Saulnier
+#' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 
 #' @references
 #' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2022).
 #' Joint models for the longitudinal analysis of measurement scales in the presence 
-#' of informative dropout, Methods 203.
+#' of informative dropout, Methods; 203:142-51. 
+
 #' 
 #' Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 #' Robust and efficient optimization using a Marquardt-Levenberg algorithm with 

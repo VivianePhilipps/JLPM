@@ -4,20 +4,25 @@
 #' This function fits extended joint models with shared random effects.
 #' The longitudinal submodel handles multiple continuous longitudinal outcomes
 #' (Gaussian or  non-Gaussian, curvilinear) as well as 
-#' ordinal longitudinal outcomes in a mixed effects framework. The model assumes that all the outcomes 
+#' ordinal longitudinal outcomes in a mixed effect framework. The model assumes 
+#' that all the outcomes 
 #' measure the same underlying latent process defined as their common
-#' factor, and each outcome is related to this latent common factor by
-#' outcome-specific measurement models whose nature depends on the type of the 
-#' associated outcome (linear model for Gaussian outcome, curvilinear model for 
-#' non-Gaussian outcome, cumulative probit model for ordinal outcome).
-#' At the latent process level, the model estimates a standard linear mixed model.
-#' The survival submodel handles right-censored (possibly left-truncated) time-to-events with competing risks.
-#' The association between the longitudinal and the survival data is captured by including 
+#' factor, and each outcome is related to this latent common factor by a
+#' outcome-specific measurement model whose nature depends on the type of the 
+#' outcome (linear model for Gaussian outcome, curvilinear model for 
+#' non-Gaussian outcome, probit model for binary outcome, cumulative probit 
+#' model for ordinal outcome).
+#' At the latent process level, the model assumes a linear mixed model.
+#' The survival submodel handles right-censored (possibly left-truncated) 
+#' time-to-event with competing causes
+#' The association between the longitudinal and the survival data is captured 
+#' by including 
 #' the random effect from the mixed model or the predicted current level 
-#' of the underlying process as a linear predictor in the proportional hazard survival model.
+#' of the underlying process as linear predictors in the cause-specific 
+#' proportional hazard survival model.
 #' Parameters of the measurement models, of the latent process mixed model and of the 
-#' survival model are estimated simultaneously using a maximum likelihood method,
-#' through a Marquardt-Levenberg algorithm.
+#' survival model are simultaneously estimated using a maximum likelihood method,
+#' through a Marquardt-Levenberg optimization algorithm.
 #' 
 #' 
 #' 
@@ -25,16 +30,17 @@
 #' 
 #' \code{jointLPM} function estimates one measurement model per outcome to link
 #' each outcome Y_k(t) with the underlying latent common factor L(t) they measure.
-#' To fix the latent process dimension, we chose to constrain at the latent process 
-#' level the intercept of the mixed model at 0 and the 
-#' standard error of the first random effect at 1. The nature of each measurment
+#' To fix the latent process dimension, we chose to constrain the latent 
+#' process dimensino with the intercept of the mixed model fixed at 0 and the 
+#' standard error of the first random effect fixed at 1. The nature of each 
+#' measurement
 #' model adapts to the type of the outcome it models. 
 #' 
-#' 1. For continuous Gaussian outcomes, linear models are used and required 2 parameters for 
+#' 1. For continuous Gaussian outcomes, linear models are used and require 2 parameters for 
 #' the transformation (Y(t) - b1)/b2
 #' 
 #' 2. For continuous non-Gaussian outcomes, curvilinear models use 
-#' parametrized link function to link outcomes to the latent process. 
+#' parameterized link functions to link outcomes to the latent process. 
 #' With the "beta" link function, 4 parameters are required for the
 #' following transformation: [ h(Y(t)',b1,b2) - b3]/b4 where h is the Beta CDF
 #' with canonical parameters c1 and c2 that can be derived from b1 and b2 as
@@ -43,11 +49,11 @@
 #' max(Y(t)) - min(Y(t)) +2*epsY ].
 #' With the "splines" link function, n+2 parameters are required for the
 #' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2}*I_{n+1}(Y(t)),
-#' where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constraint the
+#' where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constrain the
 #' parameters to be positive, except for b_1, the program estimates b_k^* (for
 #' k=2,...,n+2) so that b_k=(b_k^*)^2.
 #' 
-#' 3. For discrete ordinal outcomes, cumulative probit models are used. For a
+#' 3. For ordinal outcomes (and binary outcomes), cumulative probit models are used. For a
 #' (n+1)-level outcome, the model consist of determining n thresholds t_k in the 
 #' latent process scale which correspond to the outcome level changes. Then,
 #' Y(t) = n' <=> t_n' < L(t) + e <= t_(n'+1) with e the standard error of the outcome.
@@ -59,7 +65,7 @@
 #' 
 #' a. BASELINE RISK FUNCTIONS
 #' 
-#' For the baseline risk functions, the following parameterizations were considered. 
+#' For the baseline risk functions, the following parameterizations are considered. 
 #' 
 #' 1. With the "Weibull" function: 2 parameters are necessary w_1 and w_2 so that 
 #' the baseline risk function a_0(t) = w_1^2*w_2^2*(w_1^2*t)^(w_2^2-1) if logscale=FALSE  
@@ -73,29 +79,31 @@
 #' 3. with the "splines" function and nz nodes (y_1,...y_nz), nz+2 parameters 
 #' are necessary s_1,...s_nz+2 so that the baseline risk function a_0(t) = sum_j s_j^2 M_j(t) 
 #' if logscale=FALSE and a_0(t) = sum_j exp(s_j) M_j(t) if logscale=TRUE where M_j is the basis of cubic M-splines.
-#' Two parametrizations of the baseline risk function are proposed (logscale=TRUE or FALSE) 
+#' Two parameterizations of the baseline risk function are proposed (logscale=TRUE or FALSE) 
 #' because in some cases, especially when the instantaneous risks are very close to 0, 
 #' some convergence problems may appear with one parameterization or the other. 
-#' As a consequence, we recommend to try the alternative parameterization (changing logscale option) 
-#' when a model does not converge (maximum number of iterations reached) and
-#' where convergence criteria based on the parameters and likelihood are small.
+#' As a consequence, we recommend to try the alternative parameterization 
+#' (changing logscale option) 
+#' when a model does not converge (maximum number of iterations reached) although
+#'   convergence criteria based on the parameters and likelihood are small.
 #' 
 #' 
 #' b. ASSOCIATION BETWEEN LONGITUDINAL AND SURVIVAL DATA
 #' 
 #' The association between the longitudinal and the survival data is captured by including 
 #' a function of the elements from the latent process mixed model as a predictor in the survival model.
-#'  We implement two association structures,
+#'  We implemented so far two association structures,
 #' that should be specified through \code{sharedtype} argument.
 #' 
-#' 1. the random effect from the latent process linear mixed model (\code{sharedtype='RE'}) :
-#' the q random effects modeling the individual deviation in the longitudinal model are also included
+#' 1. the random effect from the latent process linear mixed model (\code{sharedtype='RE'}):
+#' the q random effects modeling the individual deviation in the longitudinal model
+#'  are also included
 #' in the survival model, so that a q-vector of parameters measures the association
 #' between the risk of event and the longitudinal outcome(s).
 #' 
-#' 2. the predicted current level of the underlying process (\code{sharedtype='CL'}) :
-#' the predicted latent process defined by the mixed model appears as
-#' time-dependent covariate in the survival model.
+#' 2. the predicted current level of the underlying process (\code{sharedtype='CL'}):
+#' the predicted latent process defined by the mixed model at time t is included as
+#' time-dependent covariate in the risk of event model for time t.
 #' The association between the longitudinal process and the risk of event
 #' is then quantified by a unique parameter.
 #' 
@@ -336,9 +344,9 @@
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 
 #' @references
-#' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2021).
+#' Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2022).
 #' Joint models for the longitudinal analysis of measurement scales in the presence 
-#' of informative dropout   arXiv:2110.02612
+#' of informative dropout, Methods; 203:142-51. 
 #' 
 #' Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 #' Robust and efficient optimization using a Marquardt-Levenberg algorithm with 

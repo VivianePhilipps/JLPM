@@ -18,13 +18,13 @@ via github only (https://github.com/VivianePhilipps/JLPM/issues).
 \references{
 Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier, Proust-Lima (2022).
 Joint models for the longitudinal analysis of measurement scales in the presence 
-of informative dropout, Methods 203.
+of informative dropout, Methods; 203:142-51. 
 
 Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
 R package marqLevAlg, The R Journal 13:2.
 }
 \author{
-Cecile Proust-Lima, Viviane Philipps, Tiphaine Saulnier
+Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 }
 \keyword{package}
