@@ -21,10 +21,10 @@
 #' random effects model with binary or ordinal longitudinal outcome(s)
 #' @param maxState a list specifying the items and the corresponding levels 
 #' defining the maximum state for the computation of the sojourn time. For instance 
-#' \code{maxState=list(Y = 3)} will compute the expected sojourn stay corresponding to 
+#' \code{maxState=list(Y = 3)} will compute the expected sojourn time corresponding to 
 #' an impairment of Y lower or equal to 3.
 #' @param condState an optional list specifying the initial state at start time 
-#' (argument \code{startTime}) from which to compute the residual sojourn stay.
+#' (argument \code{startTime}) from which to compute the residual sojourn time.
 #' @param newdata a data frame specifying the covariate profile for which 
 #' the sojourn time is computed.
 #' @param var.time a character string specifying the name of the time variable 
@@ -81,13 +81,13 @@
 #' #### Computation of the expected lifetime sojourn time with HIER impairment
 #' up to 2 (HIER = 2)
 #' #### (=int_0^150 P(HIER(t) <= 2, T > t) dt)
-#' sojournStay(M2, list(HIER = 2), newdata = data.frame(male = 0), 
+#' sojournTime(M2, list(HIER = 2), newdata = data.frame(male = 0), 
 #' var.time = "age65")
 #'
 #' #### Computation of the expected residual time with maximum HIER impairment
 #'  of 2 (HIER = 2), given the impairment was at most 1 at time 0.5
 #' #### (=int_0.5^150 P(HIER(t) <= 2, T > t | HIER(0.5) <= 1, T > 0.5) dt)
-#' sojournStay(M2, list(HIER = 2), condState = list(HIER = 1), startTime = 0.5,
+#' sojournTime(M2, list(HIER = 2), condState = list(HIER = 1), startTime = 0.5,
 #' newdata = data.frame(male = 0), var.time = "age65")
 #' }
 #' 
@@ -95,7 +95,7 @@
 #' 
 #' @export
 
-sojournStay <- function(x, maxState, condState=NULL, newdata, var.time, 
+sojournTime <- function(x, maxState, condState=NULL, newdata, var.time, 
                         startTime=0, nMC=1000, upperTime=150, subdivisions=100L, 
                         rel.tol=.Machine$double.eps^0.25, draws=FALSE, 
                         ndraws=2000, returndraws=FALSE, cl=NULL)
