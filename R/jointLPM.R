@@ -297,6 +297,7 @@
 #' @param sharedtype indicator of shared random function type. \code{'RE'} indicates
 #' an association through the random effects included in the linear mixed model.
 #' \code{'CL'} defines a association through the predicted current level of the latent process.
+#' @param centerpoly for polynomial associations only, value(s) to center degree 2 and 3 polynomial terms.
 #' @param var.time name of the variable representing the measurement times.
 #' @param nproc number of cores for parallel computation.
 #' @param clustertype the type of cluster that should internally be created.
@@ -424,7 +425,7 @@
 #' @export
 #' 
 jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",intnodes=NULL,epsY=0.5,randomY=FALSE, var.time,
-                survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype='RE',
+                survival=NULL,hazard="Weibull",hazardrange=NULL,hazardnodes=NULL,TimeDepVar=NULL,logscale=FALSE,startWeibull=0, sharedtype='RE', centerpoly = 0,
                 methInteg="QMC",nMC=1000,data,subset=NULL,na.action=1,
                 B,posfix=NULL,maxiter=100,convB=0.0001,convL=0.0001,convG=0.0001,partialH=NULL,
                 nsim=100,range=NULL,verbose=TRUE,returndata=FALSE,
@@ -447,11 +448,18 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if(!is.numeric(data[,subject])) stop("The argument subject must be numeric")
     if(all(link %in% c("linear","beta","thresholds")) & !is.null(intnodes)) stop("Intnodes should only be specified with splines links")
     if(!(na.action%in%c(1,2)))stop("only 1 for 'na.omit' or 2 for 'na.fail' are required in na.action argument")
-    if(!(sharedtype%in%c('RE','CL')))stop("The value of argument sharedtype must be 'RE' (for shared random effects) or 'CL' (for shared latent process current level)")
+    #if(!(sharedtype%in%c('RE','CL')))stop("The value of argument sharedtype must be 'RE' (for shared random effects) or 'CL' (for shared latent process current level)")
     if(missing(var.time) | length(var.time)!=1)stop("The argument var.time is missing or is not of length 1")
     if(!(var.time %in% colnames(data))) stop("Unable to find variable 'var.time' in 'data'")
-    if(sharedtype == 'CL' & missing(cor)==FALSE) print("WARNING : wi not computed on current level prediction 'cause considered not shared")
-    if(sharedtype == 'CL' & missing(TimeDepVar)==FALSE) stop("model with sharedtype='CL' not yet programmed with time dependent effect on survival")
+
+    shtypes <- c("RE", "REpoly", "RElogit", "CL", "CLpoly", "CLlogit", "CS", "CSpoly", "CSlogit",
+                 "CL+CS", "CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit", "CLpoly+CSpoly", "CLpoly+CSlogit", "CLlogit+CSpoly", "CLlogit+CSlogit") # associations possibles
+    sharedtype <- gsub("[[:space:]]", "", sharedtype)
+    if(!all(sharedtype %in% shtypes)) stop(paste("sharedtype should be among", paste(shtypes, collapse = ", ")))
+
+    if(any(sharedtype %in% shtypes[-c(1:3)]) & (!missing(cor))) print("WARNING : wi not computed on current level prediction 'cause considered not shared")
+    if(any(sharedtype %in% shtypes[-c(1:3)]) & (!missing(TimeDepVar))) stop("model with sharedtype='CL' not yet programmed with time dependent effect on survival")
+
     
     #    if(length(posfix) & missing(B)) stop("A set of initial parameters must be specified if some parameters are not estimated")
     
@@ -599,7 +607,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         
         ## nombre d'evenement concurrents
         nbevt <- length(attr(surv,"states"))
-        if(nbevt<1) stop("No observed event in the data")
+        if(nbevt < 1)
+        {
+            warning("No observed event in the data")
+            nbevt <- 1
+        }
         
         
         ## pour la formule pour survivial, creer 3 formules : 
@@ -1168,13 +1180,22 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
       }
       
       
+        ## non linear associations
+        nonlin <- rep(0, 3 * nbevt)
+        nonlin[1:nbevt] <- sapply(1:nbevt, function(ke) { as.numeric(length(grep("REpoly", sharedtype[ke]))) }) + sapply(1:nbevt, function(ke) { 2 * as.numeric(length(grep("RElogit", sharedtype[ke]))) }) #1 pour REpoly, 2 pour RElogit
+        nonlin[nbevt + 1:nbevt] <- sapply(1:nbevt, function(ke) { as.numeric(length(grep("CLpoly", sharedtype[ke]))) }) + sapply(1:nbevt, function(ke) { 2 * as.numeric(length(grep("CLlogit", sharedtype[ke]))) }) # 1 pour CLpoly, 2 pour CLlogit
+        nonlin[2 * nbevt + 1:nbevt] <- sapply(1:nbevt, function(ke) { as.numeric(length(grep("CSpoly", sharedtype[ke]))) }) + sapply(1:nbevt, function(ke) { 2 * as.numeric(length(grep("CSlogit", sharedtype[ke]))) }) # 1 pour CSpoly, 2 pour CSlogit
+
       ###TS: cas ou gi(bi,t)=niv.courant -> construction des matrices design pr predire lambda a chq pnt de quadrature GK
-      if(sharedtype == 'RE'){  #gi(bi,t)=bi
+      if(all(sharedtype %in% shtypes[1:3])){  #gi(bi,t)=bi
         Xpred <- 0
         Xpred_Ti <- 0
         nbXpred <- 0
+        Xpred_cs <- 0
+        Xpredcs_Ti <- 0
+        centerpoly0 <- 0
       }
-      if(sharedtype == 'CL'){   #gi(bi,t)=niv.courant(t)
+      if(any(sharedtype %in% shtypes[-c(1:3)])){   #gi(bi,t)=niv.courant(t) ou pente
         
         # /!\ si varexp dependante du tps (autre que var.time), prediction impossible
         nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
@@ -1183,7 +1204,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
           for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
             tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
             if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
-              stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype='CL' due to impossibility to predict"))
+              stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype 'CL' or 'CS' due to impossibility to predict"))
           }  
         }
         
@@ -1254,8 +1275,38 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
           Xpredcl0 <- NULL
         }
         
-        nbXpred <- c(nbXpred, ncol(Xpred))
-        
+          nbXpred <- c(nbXpred, ncol(Xpred))
+
+
+          ## Viviane : remplace ce qui precede
+          data_tmp <- as.data.frame(unique(na.omit(data[,c(subject,nom.var)])))
+          colnames(data_tmp) <- c(subject,nom.var)
+
+          deriv <- ifelse(length(grep("CS", sharedtype)) > 0, TRUE, FALSE)
+          X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, tsurv0, tsurv, deriv)
+                                        # a controler : tsurv0=NULL si pas idtrunc ??
+          Xpred_Ti <- X_GK$Xpred_Ti     # X(t) pour calculer lambda(Ti)
+          Xpred <- X_GK$Xpred_cl        # X(t) pour calculer S(Ti)
+          Xpredcs_Ti <- X_GK$Xpredcs_Ti # dX(t)/dt pour calculer lambda(Ti)
+          Xpred_cs <- X_GK$Xpred_cs     # dX(t)/dt pour calculer S(Ti)
+          nbXpred <- c(ncol(Xpred_Ti), ncol(Xpred))
+
+
+          ## centerpoly
+          centerpoly0 <- c(0, 0) # centrage pour CLpoly et CSpoly
+          l <- 0 # expected length of argument centerpoly
+          if(any(nonlin[nbevt + 1:nbevt] == 1)) l <- l + 1
+          if(any(nonlin[2 * nbevt + 1:nbevt] == 1)) l <- l + 1
+          if(l > 0) if(length(centerpoly) != l) stop(paste("centerpoly should be of length", l, "\n"))
+          if(length(centerpoly) == 1)
+          {
+              if(any(nonlin[nbevt + 1:nbevt] == 1)) centerpoly0[1] <- centerpoly
+              if(any(nonlin[2 * nbevt + 1:nbevt] == 1)) centerpoly0[2] <- centerpoly
+          }
+          else
+          {
+              centerpoly0 <- centerpoly
+          }
       }
       
     }
@@ -1268,10 +1319,13 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
       #TS
       Xpred <- rep(0,length(unique(IND))*15)
       Xpred_Ti <- rep(0,length(unique(IND)))
+      Xpred_cs <- rep(0,length(unique(IND))*15)
+      Xpredcs_Ti <- rep(0,length(unique(IND))*15)
       nbXpred <- c(1,1)
+      centerpoly0 <- c(0, 0)
+      nonlin <- 0
     }
-    
-    
+            
     
     ##parametres pour Fortran
     ns <- length(unique(IND))
@@ -1337,10 +1391,28 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     predRE <- rep(0,ns*nea)
     
     ## nb parametres d'association  #TS
-    if(sharedtype == 'RE')
-        nasso <- nea*nbevt
-    if(sharedtype == 'CL')
-        nasso <- nbevt
+    if((length(sharedtype) == 1) & (nbevt > 1)) sharedtype <- rep(sharedtype, nbevt)
+    if((length(sharedtype) > 1) & (length(sharedtype) != nbevt)) stop("sharedtype should be of length 1 or", nbevt, "(number of competing events) \n")
+
+    nasso <- 0
+    for(ke in 1:nbevt)
+    {        
+        if(sharedtype[ke] == "RE")
+            nasso <- nasso + nea
+        else if(sharedtype %in% c("REpoly", "RElogit"))
+            nasso <- nasso + 3 * nea
+        else if(sharedtype %in% c("CL", "CS"))
+            nasso <- nasso + 1
+        else if(sharedtype %in% c("CLpoly", "CLlogit", "CSpoly", "CSlogit"))
+            nasso <- nasso + 3
+        else if(sharedtype %in% c("CL+CS"))
+            nasso <- nasso + 2
+        else if(sharedtype %in% c("CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit"))
+            nasso <- nasso + 4
+        else if(sharedtype %in% c("CLpoly+CSpoly", "CLlogit+CSpoly", "CLpoly+CSlogit", "CLlogit+CSlogit"))
+            nasso <- nasso + 6
+    }
+        
     
     ## prm partie long
     nef <- sum(idg==1)-1
@@ -1598,14 +1670,71 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         if(nvarxevt>0) names(b)[nrisqtot+1:nvarxevt] <- nom1
         
         
-        if(sharedtype == 'RE'){   #TS
-            for(i in 1:nbevt)
+    shtypes <- c("RE", "REpoly", "RElogit", "CL", "CLpoly", "CLlogit", "CS", "CSpoly", "CSlogit",
+                 "CL+CS", "CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit", "CLpoly+CSpoly", "CLpoly+CSlogit", "CLlogit+CSpoly", "CLlogit+CSlogit") # associations possibles
+
+
+        namesh <- rep(NA, nasso)
+        jj <- 0
+        for(ke in 1:nbevt)
+        {
+            evt <- paste("event", ke, sep = "")
+            if(sharedtype[ke] == "RE")
             {
-                names(b)[nrisqtot+nvarxevt+(nbevt-1)*nea+1:nea] <- paste("event",i," asso",1:nea,sep="")
+                namesh[jj + 1:nea] <- paste(rep(evt, nea), paste("RE", 1:nea, sep = ""))
+                jj <- jj + nea
+            }
+            if(sharedtype[ke] == "REpoly")
+            {
+                namesh[jj + 1:(3 * nea)] <- paste(evt, paste(rep(paste("RE", 1:nea, sep = ""), each = 3), "poly", 1:3, sep = ""))
+                jj <- jj + 3 * nea
+            }
+            if(sharedtype[ke] == "RElogit")
+            {
+                namesh[jj + 1:(3 * nea)] <- paste(evt, paste(rep(paste("RE", 1:nea, sep = ""), each = 3), "logit", 1:3, sep = ""))
+                jj <- jj + 3 * nea
+            }
+            if(length(grep("\\bCL\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1] <- paste(evt, "CL")
+                jj <- jj + 1
+            }
+            if(length(grep("\\bCLpoly\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1:3] <- paste(evt, paste("CLpoly", 1:3, sep = ""))
+                jj <- jj + 3
+            }
+            if(length(grep("\\bCLlogit\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1:3] <- paste(evt, paste("CLlogit", 1:3, sep = ""))
+                jj <- jj + 3
+            }
+            if(length(grep("\\bCS\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1] <- paste(evt, "CS")
+                jj <- jj + 1
+            }
+            if(length(grep("\\bCSpoly\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1:3] <- paste(evt, paste("CSpoly", 1:3, sep = ""))
+                jj <- jj + 3
+            }
+            if(length(grep("\\bCSlogit\\b", sharedtype[ke])))
+            {
+                namesh[jj + 1:3] <- paste(evt, paste("CSlogit", 1:3, sep = ""))
+                jj <- jj + 3
             }
         }
-        if(sharedtype == 'CL')
-            names(b)[nrisqtot+nvarxevt+1:nbevt] <- paste("event",1:nbevt," asso",sep="")
+        names(b)[nrisqtot+nvarxevt+1:nasso] <- namesh
+        
+        ## if(sharedtype == 'RE'){   #TS
+        ##     for(i in 1:nbevt)
+        ##     {
+        ##         names(b)[nrisqtot+nvarxevt+(nbevt-1)*nea+1:nea] <- paste("event",i," asso",1:nea,sep="")
+        ##     }
+        ## }
+        ## if(sharedtype == 'CL')
+        ##     names(b)[nrisqtot+nvarxevt+1:nbevt] <- paste("event",1:nbevt," asso",sep="")
         
         
     }
@@ -1686,10 +1815,14 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     conv3 <- c(convB, convL, convG) #TS: pr reduire le nb d arguments ds appel fct Fortran
     
-    sharedtype <- ifelse(sharedtype == 'RE',1,2) #recodage 1 pr RE, 2 pr CL  #TS
+    ##sharedtype <- ifelse(sharedtype == 'RE',1,2) #recodage 1 pr RE, 2 pr CL  #TS
+
+    sharedtype <- sapply(sharedtype, switch, "RE" = 1, "REpoly" = 1, "RElogit" = 1,
+           "CL" = 2, "CLpoly" = 2, "CLlogit" = 2,
+           "CS" = 3, "CSpoly" = 3, "CSlogit" = 3,
+           4)
 
     expectancy <- 0
-    
     
     ###############
     ###   MLA   ###
@@ -1697,12 +1830,13 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     if(maxiter==0)
     {
-        vrais <- loglik(b,Y0,X0,tsurv0,tsurv,devt,ind_survint,idea,idg,idcor,idcontr,
-                        idsurv,idtdv,typrisq,nz,zi,nbevt,idtrunc,logspecif,ny,ns,nv,
-                        nobs,nmes,idiag0,ncor,nalea,NPM,nfix,bfix,epsY,
-                        idlink,nbzitr,zitr,uniqueY0,indiceY0,nvalSPLORD,fix,
-                        methInteg,nMC,dimMC,seqMC,sharedtype,nbXpred,Xpred_Ti,Xpred,
-                        expectancy)
+        vrais <- loglik(b, Y0, X0, tsurv0, tsurv, devt, ind_survint, idea, idg, idcor,
+                        idcontr, idsurv, idtdv, typrisq, nz, zi, nbevt, idtrunc,
+                        logspecif, ny, ns, nv, nobs, nmes, idiag0, ncor, nalea,
+                        NPM, nfix, bfix, epsY, idlink, nbzitr, zitr, uniqueY0, indiceY0,
+                        nvalSPLORD, fix, methInteg, nMC, dimMC, seqMC, sharedtype,
+                        nbXpred, Xpred_Ti, Xpred, Xpredcs_Ti, Xpred_cs, nonlin,
+                        centerpoly0, expectancy)
         
         out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
                     Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
@@ -1710,28 +1844,31 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     else
     {   
-        res <- mla(b=b, m=length(b), fn=loglik,
-                   clustertype=clustertype,.packages=NULL,
-                   epsa=convB,epsb=convL,epsd=convG,
-                   digits=8,print.info=verbose,blinding=FALSE,
-                   multipleTry=25,file="",partialH=partialH,
-                   nproc=nproc,maxiter=maxiter,minimize=FALSE,
-                   Y0=Y0,X0=X0,Tentr0=tsurv0,Tevt0=tsurv,Devt0=devt,
-                   ind_survint0=ind_survint,idea0=idea,idg0=idg,idcor0=idcor,
-                   idcontr0=idcontr,idsurv0=idsurv,idtdv0=idtdv,typrisq0=typrisq,
-                   nz0=nz,zi0=zi,nbevt0=nbevt,idtrunc0=idtrunc,logspecif0=logspecif,
-                   ny0=ny,ns0=ns,nv0=nv,nobs0=nobs,nmes0=nmes,idiag0=idiag0,
-                   ncor0=ncor,nalea0=nalea,npm0=NPM,nfix0=nfix,bfix0=bfix,
-                   epsY0=epsY,idlink0=idlink,nbzitr0=nbzitr,zitr0=zitr,
-                   uniqueY0=uniqueY0,indiceY0=indiceY0,nvalSPLORD0=nvalSPLORD,
-                   fix0=fix,methInteg0=methInteg,nMC0=nMC,dimMC0=dimMC,seqMC0=seqMC,
-                   idst0=sharedtype,nXcl0=nbXpred,Xcl_Ti0=Xpred_Ti,Xcl_GK0=Xpred,
-                   expectancy0=expectancy)
+        res <- mla(b = b, m = length(b), fn = loglik,
+                   clustertype = clustertype, .packages = NULL,
+                   epsa = convB, epsb = convL, epsd = convG, 
+                   digits = 8, print.info = verbose, blinding = FALSE, 
+                   multipleTry = 25, file = "", partialH = partialH, 
+                   nproc = nproc, maxiter = maxiter, minimize = FALSE, 
+                   Y0 = Y0, X0 = X0, Tentr0 = tsurv0, Tevt0 = tsurv, Devt0 = devt, 
+                   ind_survint0 = ind_survint, idea0 = idea, idg0 = idg, idcor0 = idcor, 
+                   idcontr0 = idcontr, idsurv0 = idsurv, idtdv0 = idtdv,
+                   typrisq0 = typrisq, nz0 = nz, zi0 = zi, nbevt0 = nbevt,
+                   idtrunc0 = idtrunc, logspecif0 = logspecif, ny0 = ny, ns0 = ns,
+                   nv0 = nv, nobs0 = nobs, nmes0 = nmes, idiag0 = idiag0, 
+                   ncor0 = ncor, nalea0 = nalea, npm0 = NPM, nfix0 = nfix, bfix0 = bfix, 
+                   epsY0 = epsY, idlink0 = idlink, nbzitr0 = nbzitr, zitr0 = zitr, 
+                   uniqueY0 = uniqueY0, indiceY0 = indiceY0, nvalSPLORD0 = nvalSPLORD, 
+                   fix0 = fix, methInteg0 = methInteg, nMC0 = nMC, dimMC0 = dimMC,
+                   seqMC0 = seqMC, idst0 = sharedtype, nXcl0 = nbXpred,
+                   Xcl_Ti0 = Xpred_Ti, Xcl_GK0 = Xpred, Xcs_Ti0 = Xpredcs_Ti,
+                   Xcs_GK0 = Xpred_cs, nonlin0 = nonlin, centerpoly0 = centerpoly0, 
+                   expectancy0 = expectancy)
         
         out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
                     resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA, marker=NA,
                     transfY=NA, gconv=c(res$ca, res$cb, res$rdm), niter=res$ni,
-                    loglik=res$fn.value)
+                    loglik=res$fn.value, b = res$b, v = res$v)
     }
     
     
@@ -1940,7 +2077,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                logspecif=logspecif,predSurv=predSurv,typrisq=typrisq,hazardnodes=zi,nz=nz,
                estimlink=estimlink,epsY=epsY,linktype=idlink,linknodes=zitr,nbnodes=nbnodes,nbmod=nbmod,mod=modalites,
                na.action=nayk,AIC=2*(length(out$best)-length(posfix)-out$loglik),BIC=(length(out$best)-length(posfix))*log(ns)-2*out$loglik,data=datareturn,
-               #wRandom=wRandom,b0Random=b0Random,
+                                        #wRandom=wRandom,b0Random=b0Random,
+               sharedtype = sharedtype, nonlin = nonlin, centerpoly = centerpoly0,
                posfix=posfix,CPUtime=cost[3])
     
     names(res$best) <- namesb
@@ -2000,7 +2138,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 #' @param idst0 idst0
 #' @param nXcl0 nXcl0
 #' @param Xcl_Ti0 Xcl_Ti0
-#' @param Xcl_GK0 Xcl_GK0
+#' @param Xcl_Ti0 Xcl_Ti0
+#' @param Xcs_GK0 Xcs_GK0
+#' @param Xcs_GK0 Xcs_GK0
+#' @param nonlin0 nonlin0
+#' @param centerpoly0 centerpoly0
 #' @param expectancy0 expectancy0
 #' @return the log-likelihood
 #' 
@@ -2010,8 +2152,9 @@ loglik <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,id
                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
                    nv0,nobs0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
                    epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,nvalSPLORD0,fix0,
-                   methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,expectancy0)
+                   methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,
+                   Xcs_Ti0,Xcs_GK0,nonlin0,centerpoly0,expectancy0)
 {
     res <- 0
-    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.integer(expectancy0),loglik_res=as.double(res))$loglik_res
+    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.double(Xcs_Ti0),as.double(Xcs_GK0),as.integer(nonlin0),as.double(centerpoly0),as.integer(expectancy0),loglik_res=as.double(res))$loglik_res
 }

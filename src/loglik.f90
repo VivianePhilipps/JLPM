@@ -7,8 +7,10 @@ module modirtsre
        ,nySPL,ntotvalSPL,nyORD,ntotvalORD,npmtot &
        ,nMC,methInteg,nmescur &
        ,nvarxevt,nbevt,logspecif,idtrunc,nvdepsurv,nrisqtot,nxevt,nasso &
-       ,expectancy
+       ,nassoCL,nassoCS,nassoRE,expectancy
   integer,dimension(:),allocatable,save::typrisq,nz,nprisq,nevtparx,nxcurr
+  integer,dimension(:),allocatable,save::nassoCLevt,nassoCSevt,nassoREevt
+  integer,dimension(:),allocatable,save::nonlinCL,nonlinCS,nonlinRE
   double precision,dimension(:),allocatable,save::Y,uniqueY,minY,maxY,rangeY
   double precision,dimension(:,:),allocatable,save ::X,zi
   double precision,dimension(:),allocatable,save::Tsurv0,Tsurv,Tsurvint
@@ -36,10 +38,12 @@ module modirtsre
   !  double precision,save::vrais_surv
   integer,dimension(:),allocatable,save::fix
   double precision,dimension(:),allocatable,save::bfix
-  integer,save::idst        
+  integer,dimension(:),allocatable,save::idst        
   integer,dimension(2),save::nXcl        
-  integer,dimension(2),save::id_nXcl 
+  integer,dimension(2),save::id_nXcl      
+  double precision,dimension(2),save::centerpoly
   double precision,dimension(:,:),allocatable,save::Xcl_Ti,Xcl_GK,Xcl0_GK 
+  double precision,dimension(:,:),allocatable,save::Xcs_Ti,Xcs_GK,Xcs0_GK 
   
 end module modirtsre
 
@@ -52,7 +56,8 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ,ny0,ns0,nv0,nobs0,nmes0,idiag0,ncor0,nalea0&
      ,npm0,b0,nfix0,bfix0,epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0 &
      ,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
-     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,expectancy0,loglik_res)
+     ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,Xcs_Ti0,Xcs_GK0,nonlin0,centerpoly0 &
+     ,expectancy0,loglik_res)
 
   use modirtsre
 
@@ -78,10 +83,12 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   double precision,dimension(nobs0*nv0),intent(in)::X0
   integer,dimension(npm0+nfix0),intent(in)::fix0
   double precision,dimension(dimMC0*nMC0),intent(in)::seqMC0
-  integer,intent(in)::idst0   
-  integer,dimension(2),intent(in)::nXcl0   
-  double precision,dimension(ns0,nXcl0(1)),intent(in)::Xcl_Ti0 
-  double precision,dimension(15*ns0,nXcl0(2)),intent(in)::Xcl_GK0
+  integer,dimension(nbevt0),intent(in)::idst0   
+  integer,dimension(2),intent(in)::nXcl0    
+  double precision,dimension(2),intent(in)::centerpoly0
+  double precision,dimension(ns0,nXcl0(1)),intent(in)::Xcl_Ti0,Xcs_Ti0
+  double precision,dimension(15*ns0,nXcl0(2)),intent(in)::Xcl_GK0,Xcs_GK0
+  integer,intent(in),dimension(3*nbevt0)::nonlin0
   double precision, dimension(npm0), intent(in) :: b0
   double precision, dimension(nfix0), intent(in) :: bfix0
   
@@ -205,6 +212,8 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   allocate(Tsurv0_st2(ns0,15),Tsurv_st2(ns0,15))
   allocate(typrisq(nbevt0),nz(nbevt0),nprisq(nbevt0),nevtparx(nv0),nxcurr(nv0))
   allocate(idsurv(nv0),idtdv(nv0))
+  allocate(idst(nbevt0), nonlinRE(nbevt0), nonlinCL(nbevt0), nonlinCS(nbevt0))
+  allocate(nassoREevt(nbevt0), nassoCLevt(nbevt0), nassoCSevt(nbevt0))
 
   ! zi : contient noeuds pour hazard (ou min et max si Weibull)
   if(any(typrisq0.eq.3)) then
@@ -214,6 +223,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   end if
   
   allocate(Xcl_Ti(ns0,nXcl0(1)),Xcl_GK(15*ns0,nXcl0(1)),Xcl0_GK(15*ns0,nXcl0(1)))
+  allocate(Xcs_Ti(ns0,nXcl0(1)),Xcs_GK(15*ns0,nXcl0(1)),Xcs0_GK(15*ns0,nXcl0(1)))
 
   eps=1.d-20
 
@@ -234,23 +244,45 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   ncor=ncor0
   nalea=nalea0
   idiag=idiag0
-  idst=idst0  
   nXcl=nXcl0
-  if(idst.eq.2) then
-     Xcl_Ti=Xcl_Ti0
-     Xcl_GK=Xcl_GK0(:,1:nXcl(1))
-     if (idtrunc.eq.1) then
-        Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
-     end if
-     do i=1,ns0  
-        do p=1,15
-           Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
-           if (idtrunc.eq.1) then
-              Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
-           end if
+  centerpoly = centerpoly0
+  
+  do ke = 1,nbevt
+     ! association(s) sur l'evenement ke
+     idst(ke) = idst0(ke)
+     nonlinRE(ke) = nonlin0(ke)
+     nonlinCL(ke) = nonlin0(nbevt + ke)
+     nonlinCS(ke) = nonlin0(2 * nbevt + ke)
+
+     ! var expl aux 15 points de quadrature pour niveau courant
+     if(idst(ke).ne.1) then ! besoin de Xcl_GK[,1] pour fct_risq_base
+        Xcl_Ti=Xcl_Ti0
+        Xcl_GK=Xcl_GK0(:,1:nXcl(1))
+        if (idtrunc.eq.1) then
+           Xcl0_GK=Xcl_GK0(:,(nXcl(1)+1):nXcl(2))
+        end if
+
+        ! temps pour les integrales 0->Ti et 0->T0i
+        do i=1,ns0  
+           do p=1,15
+              Tsurv_st2(i,p) = Xcl_GK(15*(i-1)+p,1)
+              if (idtrunc.eq.1) then
+                 Tsurv0_st2(i,p) = Xcl0_GK(15*(i-1)+p,1) 
+              end if
+           end do
         end do
-     end do
-  end if
+     end if
+
+     ! var expl aux 15 points de quadrature pour pente courante
+     if(idst(ke).eq.3 .or. idst(ke).eq.4) then
+        Xcs_Ti=Xcs_Ti0
+        Xcs_GK=Xcs_GK0(:,1:nXcl(1))
+        if (idtrunc.eq.1) then
+           Xcs0_GK=Xcs_GK0(:,(nXcl(1)+1):nXcl(2))
+        end if
+     end if
+     
+  end do
   
   
   !     if (verbose==1) write(*,*)'ntotvalSPL',ntotvalSPL
@@ -387,19 +419,55 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   end do
   nef = nef - 1 !intercept pas estime
 
-  nasso = nbevt*nea
-  if (idst.eq.2) then
-    nasso = nbevt
-  end if
+ nasso = 0
+ nassoRE = 0
+ nassoCL = 0
+ nassoCS = 0
+ do ke=1,nbevt
+    nassoREevt(ke) = 0
+    nassoCLevt(ke) = 0
+    nassoCSevt(ke) = 0
+    
+    if(idst(ke).eq.1) then
+       if(nonlinRE(ke).eq.0) then
+          nassoRE = nassoRE + nea
+          nassoREevt(ke) = nea
+       else
+          nassoRE = nassoRE + 3 * nea
+          nassoREevt(ke) = 3 * nea
+       end if
+       
+    else
+       if(idst(ke).eq.2 .or. idst(ke).eq.4) then
+          if(nonlinCL(ke).eq.0) then
+             nassoCL = nassoCL + 1
+             nassoCLevt(ke) = 1
+          else
+             nassoCL = nassoCL + 3
+             nassoCLevt(ke) = 3
+          end if
+       end if
+       
+       if(idst(ke).eq.3 .or. idst(ke).eq.4) then
+          if(nonlinCS(ke).eq.0) then
+             nassoCS = nassoCS + 1
+             nassoCSevt(ke) = 1
+          else
+             nassoCS = nassoCS + 3
+             nassoCSevt(ke) = 3
+          end if
+       end if
+    end if
+    nasso = nasso + nassoREevt(ke) + nassoCLevt(ke) + nassoCSevt(ke)
+ end do
 
-  if (idiag.eq.1) then
+ if (idiag.eq.1) then
      nvc=nea-1
   else if(idiag.eq.0) then
      nvc=(nea+1)*nea/2-1
   end if
 
   npmtot = nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+ny
-
   ! points qmc
   if(methInteg.ne.3) then 
      allocate(seqMC(1))
@@ -474,7 +542,8 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
 
   deallocate(fix,bfix,seqMC)
 
-  deallocate(Xcl_Ti,Xcl_GK,Xcl0_GK) 
+  deallocate(Xcl_Ti,Xcl_GK,Xcl0_GK, Xcs_Ti,Xcs_GK,Xcs0_GK)
+  deallocate(idst, nonlinRE, nonlinCL, nonlinCS, nassoREevt, nassoCLevt, nassoCSevt)
   
   return
   
@@ -536,7 +605,7 @@ double precision function vrais_i(b,npm,i)
   IMPLICIT NONE
   integer ::i,j,k,l,m,jj,npm,ll,ii,numSPL,ykord
   integer ::ier,kk,j1,j2,sumMesYk,yk,sumntr,ke,sumnrisq
-  integer::nevtxcurr,nxevtcurr
+  integer::nevtxcurr,nxevtcurr,sumnassoCL,sumnassoCS
   double precision,dimension(maxmes,nv) ::X00
   double precision,dimension(maxmes,nea) ::Z
   double precision,dimension(maxmes,(ncontr+sum(idcontr)))::X01
@@ -550,7 +619,8 @@ double precision function vrais_i(b,npm,i)
   double precision,dimension(nxevt)::Xevt,bevt
   double precision,dimension(nbevt)::bevtint
   double precision,dimension(maxval(nprisq))::brisq
-  double precision::basso 
+  double precision,dimension(3)::bassoCL
+  double precision,dimension(3)::bassoCS
   double precision,dimension(nef)::beta_ef 
 
   double precision :: eps,det,som,eta0
@@ -565,7 +635,7 @@ double precision function vrais_i(b,npm,i)
   double precision,dimension(nbevt)::risq,surv,surv0,survint
   double precision::SX,x22,div,vrais_Y,vrais_surv,varexpsurv
   double precision::surv0_glob,surv_glob,fevt,easurv  
-  double precision,external::alnorm
+  double precision,external::alnorm, poly, logit
   double precision::pred_cl_Ti 
   double precision::som_T0,som_Ti
   
@@ -1124,7 +1194,6 @@ double precision function vrais_i(b,npm,i)
         sumntr = sumntr + ntr(yk)
      end do ! fin boucle yk
 
-!if(i.lt.4) print*,"avant survie, vrais_Y",vrais_Y
      ! partie survie
 
      if (nbevt.ne.0) then
@@ -1136,6 +1205,8 @@ double precision function vrais_i(b,npm,i)
         survint=0.d0
 
         sumnrisq=0
+        sumnassoCL=0
+        sumnassoCS=0
         do ke=1,nbevt
 
            brisq=0.d0
@@ -1149,23 +1220,30 @@ double precision function vrais_i(b,npm,i)
               end do
            end if
            
-           basso=0.d0 
-           basso=b1(nrisqtot+nvarxevt+ke) !basso = eta = prm estime des EAs partages
+           bassoCL=0.d0 
+           do k=1,nassoCLevt(ke)
+              bassoCL(k) = b1(nrisqtot+nvarxevt+sumnassoCL+k) !basso = eta = prm estime des EAs partages
+           end do
+
+           bassoCS=0.d0 
+           do k=1,nassoCSevt(ke)
+              bassoCS(k) = b1(nrisqtot+nvarxevt+nassoCL+sumnassoCS+k)
+           end do
            
-           beta_ef=0.d0 
-           beta_ef=b1(nrisqtot+nvarxevt+ke) !beta_ef = prms des EFs necessaires pr pred curlev
+           beta_ef=0.d0  !beta_ef = prms des EFs necessaires pr pred curlev
            do k=1,nef
               beta_ef(k) = b1(nrisqtot+nvarxevt+nasso+k)
            end do
 
-           
-           if (idst.eq.1) then  !bi
+           if (idst(ke).eq.1) then  !bi
               call fct_risq_irtsre(i,ke,brisq,risq,surv,surv0,survint)  
-           else if(idst.eq.2) then   !niv.courant du processus latent
-              call fct_risq_irtsre_2(i,ke,brisq,basso,beta_ef,ui,risq,surv,surv0)  
+           else !if(idst.eq.2) then   !niv.courant du processus latent
+              call fct_risq_irtsre_2(i,ke,brisq,bassoCL,bassoCS,beta_ef,ui,risq,surv,surv0)  
            end if
 
            sumnrisq = sumnrisq + nprisq(ke)
+           sumnassoCL = sumnassoCL + nassoCLevt(ke)
+           sumnassoCS = sumnassoCS + nassoCSevt(ke)
         end do
 
  ! print*,"fct_risq ok"
@@ -1229,49 +1307,74 @@ double precision function vrais_i(b,npm,i)
            end if
            
            ! effets aleatoires partages 
-           if (idst.eq.1) then
-            easurv=0.d0
-            if(nea.gt.0) then      !si EA
-              easurv=DOT_PRODUCT(ui,b1((nrisqtot+nvarxevt+m+1)&
-                :(nrisqtot+nvarxevt+m+nea)))
-              m = m+nea
-            end if
+           if (idst(ke).eq.1) then
+              easurv=0.d0
+              if(nea.gt.0) then      !si EA
+                 if(nonlinRE(ke).eq.0) then ! asso lineaire
+                    easurv=DOT_PRODUCT(ui,b1((nrisqtot+nvarxevt+m+1)&
+                         :(nrisqtot+nvarxevt+m+nea)))
+                    m = m+nea
+                 else if(nonlinRE(ke).eq.1) then ! asso polynomiale
+                    do k = 1,nea
+                       easurv = easurv + poly(ui(k), b1((nrisqtot+nvarxevt+m+1)&
+                            :(nrisqtot+nvarxevt+m+3)), 0.d0)
+                       m = m+3
+                    end do
+                 else if (nonlinRE(ke).eq.2) then !  asso logistique
+                    do k = 1,nea
+                       easurv = easurv + logit(ui(k), b1((nrisqtot+nvarxevt+m+1)&
+                         :(nrisqtot+nvarxevt+m+3)))
+                       m = m+3
+                    end do
+                 end if
+              end if
+           else
+              m = m + nassoCLevt(ke) + nassoCSevt(ke)
            end if
            
            ! avoir evt au temps Ti si Devt=1
            if (Devt(i).eq.ke) then     !si sujet i a evt ke
-              if (idst.eq.1) then
+              if (idst(ke).eq.1) then
                 fevt=risq(ke)*exp(varexpsurv+easurv)   !fct de risq         
-              else if (idst.eq.2) then
-                ! niv courant process latent au tps Ti
-                do ll=1,id_nXcl(1)
-                  pred_cl_Ti = pred_cl_Ti + Xcl_Ti(i,1+ll) * beta_EF(ll)  ! X(t) %*% beta
-                end do
-                do ll=1,id_nXcl(2)
-                  pred_cl_Ti = pred_cl_Ti + Xcl_Ti(i,1+nef+ll) * ui(ll)  ! Z(t) %*% ui
-                end do
+             else !if (idst(ke).eq.2 .or. idst(ke).eq.4) then
+                !! j'ai ajouté l'asso dans fct_risq_irtsre_2
+                ! ! niv courant process latent au tps Ti
+                ! do ll=1,id_nXcl(1)
+                !   pred_cl_Ti = pred_cl_Ti + Xcl_Ti(i,1+ll) * beta_EF(ll)  ! X(t) %*% beta
+                ! end do
+                ! do ll=1,id_nXcl(2)
+                !   pred_cl_Ti = pred_cl_Ti + Xcl_Ti(i,1+nef+ll) * ui(ll)  ! Z(t) %*% ui
+                ! end do
+
+                ! if(nonlinCL(ke).eq.0) then
+                !    pred_cl_Ti = EXP(pred_cl_Ti*b1(nrisqtot+nvarxevt+sumnassoRE+ke) )  ! exp(predcl*basso)
+                ! else if(nonlinCL(ke).eq.1) then
+                !    pred_cl_Ti = exp(poly(pred_cl_Ti, bassoCL))
+                  
+                ! else if(nonlinCL(ke).eq.2) then
+                !    pred_cl_Ti = exp(logit(pred_cl_Ti, bassoCL))
+                ! end if
                 
-                pred_cl_Ti = EXP(pred_cl_Ti*b1(nrisqtot+nvarxevt+ke) )  ! exp(predcl*basso)
-                fevt=risq(ke)*exp(varexpsurv)*pred_cl_Ti
-              end if
+                fevt=risq(ke)*exp(varexpsurv) !*pred_cl_Ti
+             end if
               if (ind_survint(i).eq.1) then
                  fevt=fevt*exp(bevtint(ke))
               end if
            end if
            
            ! risque cumule jusque Ti
-           if (idst.eq.1) then
+           if (idst(ke).eq.1) then
             Surv_glob=surv_glob + survint(ke)*exp(varexpsurv+easurv) + &
                   exp(bevtint(ke)+varexpsurv+easurv)*(surv(ke)-survint(ke))     
-           else if (idst.eq.2) then
+           else !if (idst(ke).eq.2) then
             Surv_glob=surv_glob + surv(ke)*exp(varexpsurv)
-           end if
+         end if
            
            ! troncature : risque cumule au temps T0
            if (idtrunc.eq.1) then
-            if (idst.eq.1) then
+            if (idst(ke).eq.1) then
               surv0_glob=surv0_glob+surv0(ke)*exp(varexpsurv+easurv)    
-            else if (idst.eq.2) then
+            else !if (idst(ke).eq.2) then
               surv0_glob=surv0_glob+surv0(ke)*exp(varexpsurv)  
             end if
            end if
@@ -2033,7 +2136,7 @@ end subroutine fct_risq_irtsre
 
 
 ! fct calculant risq de base au tps event et risq cumule (sans varexp) par quadrature de Konrod
-subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
+subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, surv, surv0)
 
   use modirtsre
         
@@ -2042,7 +2145,8 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   integer::i,k
   double precision,dimension(nprisq(k))::brisq
   double precision,dimension(nbevt)::risq,surv,surv0
-  double precision::basso
+  double precision,dimension(nassoCL)::bassoCL
+  double precision,dimension(nassoCS)::bassoCS
   double precision,dimension(nef)::beta_ef
   double precision,dimension(nea)::ui
   
@@ -2056,8 +2160,10 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   double precision,dimension(15)::pred_GK_event,pred_GK_entry
   double precision,dimension(15)::fct_pred_surv,fct_pred_surv0
   double precision,dimension(15)::fct_pred_surv_pond,fct_pred_surv0_pond
+  double precision::asso,cli,csi
   
   double precision,external::fct_risq_base_irtsre_2
+  double precision,external::curlev, curslope, poly, logit
   
   hlgth=0.d0
   
@@ -2078,44 +2184,146 @@ subroutine fct_risq_irtsre_2(i,k,brisq,basso,beta_ef,ui,risq,surv,surv0)
   wgk_15(11:12)=wgk(6)
   wgk_15(13:14)=wgk(7)
   wgk_15(15)=wgk(8)
-  
-  hlgth(1)=0.5d+00*Tsurv(i)  !hlgth_event
-  if (idtrunc.eq.1) then
-    hlgth(2)=0.5d+00*Tsurv0(i)   !hlgth_entry
+
+  if(expectancy.eq.0) then
+     hlgth(1)=0.5d+00*Tsurv(i)  !hlgth_event
+     if (idtrunc.eq.1) then
+        hlgth(2)=0.5d+00*Tsurv0(i)   !hlgth_entry
+     end if
+  else
+     hlgth(1) = 0.5d+00 * (Tsurv(i) - Tsurv0(i))
   end if
   
   !!! risque de base au tps d event Ti
   risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)
-  
-  
-  !!! risque cumule par quadrature de Kronrod
+  asso = 0.d0
+  if(idst(k).eq.2 .or. idst(k).eq.4) then
+     cli = curlev(i,beta_ef,ui)
+     if(nonlinCL(k).eq.0) then
+        asso = asso + cli * bassoCL(1)
+     else if(nonlinCL(k).eq.1) then
+        asso = asso + poly(cli, bassoCL, 0.d0)
+     else if(nonlinCL(k).eq.2) then
+        asso = asso + logit(cli, bassoCL)
+     end if
+  end if
+  if(idst(k).eq.3 .or. idst(k).eq.4) then
+     csi = curslope(i,beta_ef,ui)
+     if(nonlinCS(k).eq.0) then
+        asso = asso + csi * bassoCS(1)
+     else if(nonlinCS(k).eq.1) then
+        asso = asso + poly(csi, bassoCS, 0.d0)
+     else if(nonlinCS(k).eq.2) then
+        asso = asso + logit(csi, bassoCS)
+     end if
+  end if
+  risq(k) = risq(k) * exp(asso)
+
+!!! risque cumule par quadrature de Kronrod
   
   !risque de base aux differents tps de quadrature
   do p = 1,15
-    risq_GK_event(p) = fct_risq_base_irtsre_2(Xcl_GK((i-1)*15+p,1),i,k,brisq,1,p)
+     risq_GK_event(p) = fct_risq_base_irtsre_2(Xcl_GK((i-1)*15+p,1),i,k,brisq,1,p)
     if (idtrunc.eq.1) then
       risq_GK_entry(p) = fct_risq_base_irtsre_2(Xcl0_GK((i-1)*15+p,1),i,k,brisq,2,p)
-    end if
-  end do
-  
+   end if
+ end do
+ 
+
   !prediction niveau courant du processus a chq pnt de quadrature
-  call fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)
-  pred_GK_event = pred_GK(1,:)
-  if (idtrunc.eq.1) then
-    pred_GK_entry = pred_GK(2,:)
+  if(idst(k).eq.2 .or. idst(k).eq.4) then
+     call fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)
+     pred_GK_event = pred_GK(1,:)
+     if (idtrunc.eq.1) then
+        pred_GK_entry = pred_GK(2,:)
+     end if
+     
+     !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
+     if(nonlinCL(k).eq.0) then
+        pred_GK_event = pred_GK_event*bassoCL(1)
+        if (idtrunc.eq.1) then
+           pred_GK_entry = pred_GK_entry*bassoCL(1)
+        end if
+     else
+        ! asso non lineaire de type polynomiale
+        if(nonlinCL(k).eq.1) then
+           !pred_GK_event = poly15(pred_GK_event, bassoCL, centerpoly(1))
+           call poly15(pred_GK_event, bassoCL, centerpoly(1))
+           if (idtrunc.eq.1) then
+              !pred_GK_entry = poly15(pred_GK_entry, bassoCL, centerpoly(1))
+              call poly15(pred_GK_entry, bassoCL, centerpoly(1))
+           end if
+        else
+           ! asso non lineaire de type logistique
+           if(nonlinCL(k).eq.2) then
+              !pred_GK_event = logit15(pred_GK_event, bassoCL)
+              call logit15(pred_GK_event, bassoCL)
+              if (idtrunc.eq.1) then
+                 !pred_GK_entry = logit15(pred_GK_entry, bassoCL)
+                 call logit15(pred_GK_entry, bassoCL)
+              end if
+           end if
+        end if
+     end if
+     
+     !produit des 2 vecteurs (risque de base * assoCL)
+     fct_pred_surv = risq_GK_event * exp(pred_GK_event) !produit de 2 vecteurs
+     if (idtrunc.eq.1) then
+        fct_pred_surv0 = risq_GK_entry * exp(pred_GK_entry)
+     end if
   end if
   
-  !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
-  pred_GK_event = EXP(pred_GK_event*basso)
-  if (idtrunc.eq.1) then
-    pred_GK_entry = EXP(pred_GK_entry*basso)
+
+  !prediction pente courante du processus a chq pnt de quadrature
+  if(idst(k).eq.3 .or. idst(k).eq.4) then
+     call fct_pred_curslope_irtsre_2(i,beta_ef,ui,pred_GK)
+     pred_GK_event = pred_GK(1,:)
+     if (idtrunc.eq.1) then
+        pred_GK_entry = pred_GK(2,:)
+     end if
+     
+     !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
+     if(nonlinCS(k).eq.0) then
+        pred_GK_event = pred_GK_event*bassoCS(1)
+        if (idtrunc.eq.1) then
+           pred_GK_entry = pred_GK_entry*bassoCS(1)
+        end if
+     else
+        ! asso non lineaire de type polynomiale
+        if(nonlinCS(k).eq.1) then
+           !pred_GK_event = poly(pred_GK_event, bassoCS, 15, centerpoly(2))
+           call poly15(pred_GK_event, bassoCS, centerpoly(2))
+           if (idtrunc.eq.1) then
+              !pred_GK_entry = poly(pred_GK_entry, bassoCS, 15, centerpoly(2))
+              call poly15(pred_GK_entry, bassoCS, centerpoly(2))
+           end if
+        else
+           ! asso non lineaire de type logistique
+           if(nonlinCS(k).eq.2) then
+              !pred_GK_event = logit(pred_GK_event, bassoCS, 15)
+              call logit15(pred_GK_event, bassoCS)
+              if (idtrunc.eq.1) then
+                 !pred_GK_entry = logit(pred_GK_entry, bassoCS, 15)
+                 call logit15(pred_GK_entry, bassoCS)
+              end if
+           end if
+        end if
+     end if
+  end if
+  
+  ! produit risque de base et toutes les assos, pour les 15 points
+  if(idst(k).eq.3) then
+     fct_pred_surv = risq_GK_event * exp(pred_GK_event)
+     if (idtrunc.eq.1) then
+        fct_pred_surv0 = risq_GK_entry * exp(pred_GK_entry)
+     end if
+  else if(idst(k).eq.4) then
+     fct_pred_surv = fct_pred_surv * exp(pred_GK_event)
+     if (idtrunc.eq.1) then
+        fct_pred_surv0 = fct_pred_surv0 * exp(pred_GK_entry)
+     end if
   end if
 
-  !produit des 2 vecteurs
-  fct_pred_surv = risq_GK_event * pred_GK_event !produit de 2 vecteurs
-  if (idtrunc.eq.1) then
-    fct_pred_surv0 = risq_GK_entry * pred_GK_entry
-  end if
 
   !ponderation
   fct_pred_surv_pond = 0.d0
@@ -2267,6 +2475,97 @@ subroutine fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)
   end do
 
 end subroutine fct_pred_curlev_irtsre_2
+
+
+!!! (subroutine) prediction de la pente courante
+!! resultat dans pred_GK une matrice de 2 lignes (event,entree) et 15 colonnes (pnts qua)
+! idem fct_pred_curlev_irtsre_2 mais utilise les matrice Xcs au lieu de Xcl
+subroutine fct_pred_curslope_irtsre_2(i, beta_ef, ui, pred_GK)
+
+  use modirtsre
+
+  implicit none
+
+  integer::i
+  double precision,dimension(nef)::beta_ef
+  double precision,dimension(nea)::ui
+  double precision,dimension(2,15)::pred_GK
+  
+  integer::p,ll
+  
+  pred_GK = 0.d0
+  
+  ! X'(t) %*% beta : necessite X au tps de quadrature t
+  do p=1,15
+    do ll=1,id_nXcl(1)
+      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,ll+1) * beta_ef(ll)
+      !intercept pas estime
+      if (idtrunc.eq.1) then
+        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,ll+1) * beta_ef(ll)
+      end if
+    end do
+  end do
+
+  ! Z'(t) %*% ui : necessite Z au tps de quadrature t
+  do p=1,15
+    do ll=1,id_nXcl(2)
+      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,1+nef+ll) * ui(ll)    !ui=vect de taille nea
+      if (idtrunc.eq.1) then
+        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,1+nef+ll)* ui(ll)
+      end if
+    end do
+  end do
+
+end subroutine fct_pred_curslope_irtsre_2
+
+
+
+!! fct curlev : prediction du niveau courant au temps de survie Ti
+double precision function curlev(i, beta, ui)
+
+  use modirtsre, only : nef, nea, id_nXcl, Xcl_Ti
+  
+  implicit none
+
+  integer :: i, j
+  double precision, dimension(nef) :: beta
+  double precision, dimension(nea) :: ui
+
+  do j = 1, id_nXcl(1) ! id_nXcl(1) = nef
+     curlev = Xcl_Ti(i, 1 + j) * beta(j)
+  end do
+  
+  do j = 1, id_nXcl(2) ! id_nXcl(2) = nea
+     curlev = curlev + Xcl_Ti(i, 1 + nef + j) * ui(j)
+  end do
+  
+end function curlev
+
+
+
+
+!! fct curslope : prediction de la pente courant au temps de survie Ti
+double precision function curslope(i, beta, ui)
+
+  use modirtsre, only : nef, nea, id_nXcl, Xcs_Ti
+  
+  implicit none
+
+  integer :: i, j
+  double precision, dimension(nef) :: beta
+  double precision, dimension(nea) :: ui
+
+  do j = 1, id_nXcl(1) ! id_nXcl(1) = nef
+     curslope = Xcs_Ti(i, 1 + j) * beta(j)
+  end do
+  
+  do j = 1, id_nXcl(2) ! id_nXcl(2) = nea
+     curslope = curslope + Xcs_Ti(i, 1 + nef + j) * ui(j)
+  end do
+  
+end function curslope
+
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2569,6 +2868,68 @@ subroutine transfos_estimees_irtsre(b,npm,nsim,marker,transfY)
 
 end subroutine transfos_estimees_irtsre
 
+
+!!  associations non lineaires :
+
+  !! polynomes de degre 3
+double precision function poly(x, coef, center)
+
+  implicit none
+
+  double precision::x
+  double precision, dimension(3)::coef
+  double precision::center
+
+  poly = coef(1) * x + coef(2) * (x - center)**2 + coef(3) * (x - center)**3
+  
+end function poly
+
+
+subroutine poly15(x, coef, center)
+
+  implicit none
+
+  integer::j
+  double precision,dimension(15)::x
+  double precision, dimension(3)::coef
+  double precision::center
+  double precision, external:: poly
+
+  do j = 1, 15
+     !x(j) = coef(1) * x(j) + coef(2) * (x(j) - center)**2 + coef(3) * (x(j) - center)**3
+     x(j) = poly(x(j), coef, center)
+  end do
+  
+end subroutine poly15
+
+  
+!! logistique
+double precision function logit(x, coef)
+
+  implicit none
+
+  double precision::x
+  double precision, dimension(3)::coef
+
+  logit = coef(1) /(1 + exp(-coef(2) * (x - coef(3))))
+  
+end function logit
+  
+subroutine logit15(x, coef)
+
+  implicit none
+
+  integer::j
+  double precision,dimension(15)::x
+  double precision, dimension(3)::coef
+  double precision, external :: logit
+
+  do j = 1, 15
+     x(j) = logit(x(j), coef)
+  end do
+
+end subroutine logit15
+  
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

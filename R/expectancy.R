@@ -102,8 +102,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 {
     if(missing(x)) stop("the model (argument x) is missing")
     if(!inherits(x,"jointLPM")) stop("use only with jointLPM model")
-    if(x$call$sharedtype == 'CL') stop("Not implemented yet with current level 
-                                       (sharedtype = 'CL')")
+ #   if(x$call$sharedtype == 'CL') stop("Not implemented yet with current level 
+ #                                      (sharedtype = 'CL')")
     if(missing(maxState)) stop("argument maxState is missing")
 #    if(!missing(condState) & (start==0)) stop("argument condState should only be used with start > 0")
     if(missing(var.time)) stop("argument var.time is missing")
@@ -240,7 +240,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         }
     }
 
-    
+    sharedtype <- 1
+    if(x$call$sharedtype == "CL") shareedtype <- 2
     
     
     fctprob <- function(t, s, x, newdata, Y, fixed, random, contr, surv, survcause, cor,
@@ -278,8 +279,42 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         X0 <- X0[,Xnames,drop=FALSE]
 
         Tevt <- t
+        Tentr <- s # only used for GK weights in fct_risq_irtsre_2
         ind_survint <- 0
         if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
+
+        ## for sharedtype = "CL"
+        if(sharedtype == 2)
+        {
+            ## noeuds de quadrature Gauss-Kronrod
+            ptGK_1 <- 0.991455371120812639206854697526329
+            ptGK_2 <- 0.949107912342758524526189684047851
+            ptGK_3 <- 0.864864423359769072789712788640926
+            ptGK_4 <- 0.741531185599394439863864773280788
+            ptGK_5 <- 0.586087235467691130294144838258730
+            ptGK_6 <- 0.405845151377397166906606412076961
+            ptGK_7 <- 0.207784955007898467600689403773245
+            ptGK_8 <- 0.000000000000000000000000000000000
+
+            ptsGK <- c(ptGK_1,-ptGK_1,ptGK_2,-ptGK_2,ptGK_3,-ptGK_3,ptGK_4,-ptGK_4,ptGK_5,-ptGK_5,ptGK_6,-ptGK_6,ptGK_7,-ptGK_7,ptGK_8) # integration [-1, 1]
+            ptsGK <- (s + t) / 2 + ((t - s) / 2) * ptsGK # integration on [s, t]
+            
+            newdata <- data.frame(t = ptsGK, newdata[, setdiff(colnames(newdata), "t")])
+
+            mat_ef <- model.matrix(fixed, data = newdata)
+            mat_ea <- model.matrix(random, data = newdata)
+            Xpredcl <- cbind(newdata$t, mat_ef, mat_ea)
+            Xcl_GK <- as.matrix(Xpredcl)
+
+            Xcl_Ti <- 0 # don't need to compute instantaneous hazard
+            nXcl <- c(0, ncol(Xpredcl))
+        }
+        else # sharedtype ="RE"
+        {
+            nXcl <- c(0, 0)
+            Xcl_Ti <- 0
+            Xcl_GK <- 0
+        }
 
         expectancy <- 1
         proba <- 0
@@ -327,10 +362,10 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         as.integer(nMC),
                         as.integer(dimMC),
                         as.double(seqMC),
-                        as.integer(1),
-                        as.integer(0),
-                        as.double(0),
-                        as.double(0),
+                        as.integer(sharedtype),
+                        as.integer(nXcl),
+                        as.double(Xcl_Ti),
+                        as.double(Xcl_GK),
                         as.integer(expectancy),
                         res=as.double(proba))$res
 

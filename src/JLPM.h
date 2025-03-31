@@ -46,5 +46,9 @@ void F77_SUB(loglik)( double * Y0,
 		      int * nXcl0,
 		      double * Xcl_Ti0,
 		      double * Xcl_GK0,
-		      int * expectancy,
-		      double * loglik);
+		      double * Xcs_Ti0,
+		      double * Xcs_GK0,
+		      int * nonlin0,
+		      double * centerpoly0,
+		      int * expectancy0,
+		      double * loglik_res);
