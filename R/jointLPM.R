@@ -1440,7 +1440,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     {
         dimMC <- nea+nalea
         if(ncor>0) dimMC <- dimMC+maxmes
-        if(dimMC>0) seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
+        if((dimMC > 0) & (nMC > 0))
+        {
+            sequnif <- spacefillr::generate_sobol_owen_set(nMC, dimMC)
+            seqMC <- apply(sequnif, 2, qnorm)
+        }
     }
     
     
@@ -2079,7 +2083,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                na.action=nayk,AIC=2*(length(out$best)-length(posfix)-out$loglik),BIC=(length(out$best)-length(posfix))*log(ns)-2*out$loglik,data=datareturn,
                                         #wRandom=wRandom,b0Random=b0Random,
                sharedtype = sharedtype, nonlin = nonlin, centerpoly = centerpoly0,
-               posfix=posfix,CPUtime=cost[3])
+               posfix=posfix,CPUtime=cost[3], nMC = nMC, b=out$b, v=out$v)
     
     names(res$best) <- namesb
     class(res) <-c("jointLPM")

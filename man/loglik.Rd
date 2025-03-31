@@ -51,6 +51,10 @@ loglik(
   nXcl0,
   Xcl_Ti0,
   Xcl_GK0,
+  Xcs_Ti0,
+  Xcs_GK0,
+  nonlin0,
+  centerpoly0,
   expectancy0
 )
 }
@@ -145,7 +149,11 @@ loglik(
 
 \item{Xcl_Ti0}{Xcl_Ti0}
 
-\item{Xcl_GK0}{Xcl_GK0}
+\item{Xcs_GK0}{Xcs_GK0}
+
+\item{nonlin0}{nonlin0}
+
+\item{centerpoly0}{centerpoly0}
 
 \item{expectancy0}{expectancy0}
 }

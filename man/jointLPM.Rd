@@ -24,6 +24,7 @@ jointLPM(
   logscale = FALSE,
   startWeibull = 0,
   sharedtype = "RE",
+  centerpoly = 0,
   methInteg = "QMC",
   nMC = 1000,
   data,
@@ -155,6 +156,8 @@ Indicates the shift in the Weibull distribution.}
 \item{sharedtype}{indicator of shared random function type. \code{'RE'} indicates
 an association through the random effects included in the linear mixed model.
 \code{'CL'} defines a association through the predicted current level of the latent process.}
+
+\item{centerpoly}{for polynomial associations only, value(s) to center degree 2 and 3 polynomial terms.}
 
 \item{methInteg}{character indicating the type of integration to compute the
 log-likelihood. 'MCO' for ordinary Monte Carlo, 'MCA' for antithetic Monte Carlo,
