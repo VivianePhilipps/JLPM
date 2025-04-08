@@ -585,7 +585,7 @@ double precision function vrais(b,m)
      end if
      nmescur = nmescur + sum(nmes(i,:))
   end do
-  
+!print*, "vrais = ", vrais  
 541 continue
   return
 
@@ -1331,7 +1331,7 @@ double precision function vrais_i(b,npm,i)
            else
               m = m + nassoCLevt(ke) + nassoCSevt(ke)
            end if
-           
+
            ! avoir evt au temps Ti si Devt=1
            if (Devt(i).eq.ke) then     !si sujet i a evt ke
               if (idst(ke).eq.1) then
@@ -1413,7 +1413,6 @@ double precision function vrais_i(b,npm,i)
   if (idtrunc.eq.1) then    !delayedentry
       vrais_i = vrais_i - log(som_T0) + log(dble(nMC))
   end if  
-  
 !  print*,"trunc ok"
   !print*,"i=",i,"som_Ti=",som_Ti,"som_T0=",som_T0," vrais_i=",vrais_i
   
@@ -2196,6 +2195,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
   
   !!! risque de base au tps d event Ti
   risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)
+
   asso = 0.d0
   if(idst(k).eq.2 .or. idst(k).eq.4) then
      cli = curlev(i,beta_ef,ui)
@@ -2498,20 +2498,21 @@ subroutine fct_pred_curslope_irtsre_2(i, beta_ef, ui, pred_GK)
   ! X'(t) %*% beta : necessite X au tps de quadrature t
   do p=1,15
     do ll=1,id_nXcl(1)
-      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,ll+1) * beta_ef(ll)
+      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,ll) * beta_ef(ll)
       !intercept pas estime
       if (idtrunc.eq.1) then
-        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,ll+1) * beta_ef(ll)
+        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,ll) * beta_ef(ll)
       end if
-    end do
+   end do
+
   end do
 
   ! Z'(t) %*% ui : necessite Z au tps de quadrature t
   do p=1,15
     do ll=1,id_nXcl(2)
-      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,1+nef+ll) * ui(ll)    !ui=vect de taille nea
+      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,nef+ll) * ui(ll)    !ui=vect de taille nea
       if (idtrunc.eq.1) then
-        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,1+nef+ll)* ui(ll)
+        pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,nef+ll)* ui(ll)
       end if
     end do
   end do
@@ -2556,11 +2557,11 @@ double precision function curslope(i, beta, ui)
   double precision, dimension(nea) :: ui
 
   do j = 1, id_nXcl(1) ! id_nXcl(1) = nef
-     curslope = Xcs_Ti(i, 1 + j) * beta(j)
+     curslope = Xcs_Ti(i, j) * beta(j)
   end do
   
   do j = 1, id_nXcl(2) ! id_nXcl(2) = nea
-     curslope = curslope + Xcs_Ti(i, 1 + nef + j) * ui(j)
+     curslope = curslope + Xcs_Ti(i, nef + j) * ui(j)
   end do
   
 end function curslope

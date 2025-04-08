@@ -28,7 +28,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
 
         ## t - h
         dmoins <- data
-        dmoins[, var.time] <- dmoins[, var.time] + h
+        dmoins[, var.time] <- dmoins[, var.time] - h
         mat_ef <- model.matrix(fixed, data = dmoins)
         mat_ef <- as.data.frame(mat_ef[, -1])
         mat_ea <- NULL
