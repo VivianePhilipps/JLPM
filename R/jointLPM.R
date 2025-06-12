@@ -1884,8 +1884,28 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     out$best <- best
     NPM <- NPM+nfix
         
-
-   
+    ## item parameters
+    # thresholds
+    thres <- data.frame(matrix(NA,nrow=max(nbmod)-1,ncol=sum(idlink==3)))
+    names(thres) <- nomsY[idlink==3]
+    k = 1
+    for(yk in 1:ny){
+      if(idlink[yk]==3){
+        if(yk==1)
+          thres[1:(nbmod[yk]-1),k] <- best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+1:ntr[yk]]
+        if(yk>1)
+          thres[1:(nbmod[yk]-1),k] <- best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sum(ntr[1:(yk-1)])+1:ntr[yk]]
+        if((nbmod[yk]-1)>1){
+          for(m in 2:(nbmod[yk]-1))
+            thres[m,k] <- thres[m-1,k] + thres[m,k]^2
+        }
+        k = k + 1
+      }
+    }
+    # discrimination
+    discrim <- 1 / as.numeric(best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny][idlink==3])
+      
+    
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
     {
@@ -2081,9 +2101,10 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                logspecif=logspecif,predSurv=predSurv,typrisq=typrisq,hazardnodes=zi,nz=nz,
                estimlink=estimlink,epsY=epsY,linktype=idlink,linknodes=zitr,nbnodes=nbnodes,nbmod=nbmod,mod=modalites,
                na.action=nayk,AIC=2*(length(out$best)-length(posfix)-out$loglik),BIC=(length(out$best)-length(posfix))*log(ns)-2*out$loglik,data=datareturn,
-                                        #wRandom=wRandom,b0Random=b0Random,
+               #wRandom=wRandom,b0Random=b0Random,
                sharedtype = sharedtype, nonlin = nonlin, centerpoly = centerpoly0,
-               posfix=posfix,CPUtime=cost[3], nMC = nMC, b=out$b, v=out$v)
+               posfix=posfix,CPUtime=cost[3], nMC = nMC, b=out$b, v=out$v,
+               thres=thres,discrim=discrim)
     
     names(res$best) <- namesb
     class(res) <-c("jointLPM")
