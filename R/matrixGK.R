@@ -37,6 +37,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
         
         ## derivee par rapport a var.time
         Xdt_Ti <- as.matrix((Xplus - Xmoins) / (2 * h))
+        Xdt_Ti <- derivMat(fixed, random, data, var.time)
     }
 
     ## points de quadrature Gauss-Kronrod
@@ -108,6 +109,8 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
         ## derivee par rapport a var.time
         Xdt <- as.matrix((Xplus - Xmoins) / (2 * h))
 
+        Xdt <- derivMat(fixed, random, data, var.time)
+
         Xdt0 <- NULL
         if(!is.null(T0))
         {
@@ -136,6 +139,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
             
             ## derivee par rapport a var.time
             Xdt0 <- as.matrix((Xplus - Xmoins) / (2 * h))
+            Xdt0 <- derivMat(fixed, random, data, var.time)
         }
     }
 

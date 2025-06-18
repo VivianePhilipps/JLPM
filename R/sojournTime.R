@@ -218,7 +218,11 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
     if(length(posfix)) fix[posfix] <- 1
     methInteg <- 3
     dimMC <- nea + nalea + sum(nmes)*as.numeric(ncor>0)
-    seqMC <- randtoolbox::sobol(n=nMC,dim=dimMC,normal=TRUE,scrambling=1)
+    if((dimMC > 0) & (nMC > 0))
+    {
+        sequnif <- spacefillr::generate_sobol_owen_set(nMC, dimMC)
+        seqMC <- apply(sequnif, 2, qnorm)
+    }
     npmtot <- length(x$best)
     btot <- x$best
     b <- btot[which(fix == 0)]
@@ -240,8 +244,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         }
     }
 
-    sharedtype <- 1
-    if(x$call$sharedtype == "CL") shareedtype <- 2
+    sharedtype <- x$sharedtype
     
     
     fctprob <- function(t, s, x, newdata, Y, fixed, random, contr, surv, survcause, cor,
@@ -260,6 +263,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         ## {
         ##     time <- rep(t, sum(nmes))
         ## }
+
+        ## to compute P(Y(t)=0, Y(s) = 0):
         time <- ifelse(indic_s1t2==1, s, t)
         ##cat("time=", time, "\n")
         newdata <- data.frame(newdata, t=time, row.names=NULL)
@@ -278,13 +283,14 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         Xnames <- gsub(paste("\\b",var.time,"\\b",sep=""),"t",Xnames)
         X0 <- X0[,Xnames,drop=FALSE]
 
+        ## to compute P(T > t):
         Tevt <- t
         Tentr <- s # only used for GK weights in fct_risq_irtsre_2
         ind_survint <- 0
         if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
 
         ## for sharedtype = "CL"
-        if(sharedtype == 2)
+        if(any(sharedtype > 1))
         {
             ## noeuds de quadrature Gauss-Kronrod
             ptGK_1 <- 0.991455371120812639206854697526329
@@ -298,27 +304,44 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 
             ptsGK <- c(ptGK_1,-ptGK_1,ptGK_2,-ptGK_2,ptGK_3,-ptGK_3,ptGK_4,-ptGK_4,ptGK_5,-ptGK_5,ptGK_6,-ptGK_6,ptGK_7,-ptGK_7,ptGK_8) # integration [-1, 1]
             ptsGK <- (s + t) / 2 + ((t - s) / 2) * ptsGK # integration on [s, t]
-            
-            newdata <- data.frame(t = ptsGK, newdata[, setdiff(colnames(newdata), "t")])
+
+            colX <- setdiff(colnames(newdata), "t")
+            if(length(colX))
+                newdata <- data.frame(t = ptsGK, newdata[1, setdiff(colnames(newdata), "t")])
+            else
+                newdata <- data.frame(t = ptsGK)
 
             mat_ef <- model.matrix(fixed, data = newdata)
             mat_ea <- model.matrix(random, data = newdata)
-            Xpredcl <- cbind(newdata$t, mat_ef, mat_ea)
+            Xpredcl <- cbind(newdata$t, mat_ef[, -1], mat_ea)
             Xcl_GK <- as.matrix(Xpredcl)
 
             Xcl_Ti <- 0 # don't need to compute instantaneous hazard
-            nXcl <- c(0, ncol(Xpredcl))
+            nXcl <- c(ncol(Xpredcl), ncol(Xpredcl))
+
+            Xcs_Ti <- 0
+            Xcs_GK <- 0
+            if(any(sharedtype %in% c(3, 4))) # slope association
+            {
+                Xcs_GK <- derivMat(fixed, random, newdata, "t")
+                Xcs_Ti <- 0
+            }
         }
         else # sharedtype ="RE"
         {
             nXcl <- c(0, 0)
             Xcl_Ti <- 0
             Xcl_GK <- 0
+            Xcs_Ti <- 0
+            Xcs_GK <- 0
         }
+        nonlin <- x$nonlin 
+        centerpoly <- x$centerpoly
 
         expectancy <- 1
         proba <- 0
-        
+
+        ## compute P(T > t, Y(t) = 0, Y(s) = 0):
         res <- .Fortran(C_loglik,
                         as.double(Y),
                         as.double(X0),
@@ -366,6 +389,10 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         as.integer(nXcl),
                         as.double(Xcl_Ti),
                         as.double(Xcl_GK),
+                        as.double(Xcs_Ti),
+                        as.double(Xcs_GK),
+                        as.integer(nonlin),
+                        as.double(centerpoly),
                         as.integer(expectancy),
                         res=as.double(proba))$res
 
@@ -373,10 +400,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 
         return(exp(res))
     }
-    #browser()
     fctprobVect <- Vectorize(fctprob,"t")
-
-
     
     ## doone : computes the result for a set of parameters
     doone <- function(bdraw)
@@ -411,7 +435,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             nobscond <- length(na.omit(Ycond))
             Ycond <- na.omit(Ycond)
             indiceYcond <- na.omit(indiceYcond)
-            
+
+            ## compute P(Y(s) = 0, T > s):
             res2 <- fctprob(t=startTime, s=0, x=x, newdata=newdata1, Y=Ycond,
                             fixed=fixed, random=random, contr=contr, surv=surv,
                             survcause=survcause, cor=cor,
@@ -433,7 +458,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
  
         return(result)
     }
-
 
     
     if(!isTRUE(draws))

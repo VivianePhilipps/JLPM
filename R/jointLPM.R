@@ -739,6 +739,9 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         outcome <- c(outcome,rep(nomsY[k],nrow(dtemp)))
         data0 <- rbind(data0, dtemp[,setdiff(colnames(dtemp),nomsY[k]),drop=FALSE])   #dataset sans NA avec les covariables utilisees; obs ordonnees par outcome
     }
+
+    rangeTlong <- NULL
+    try(rangeTlong <- range(data0[, var.time]), silent = TRUE)
     
     ##creation de X0 (ttes les var + interactions)
     Xfixed <- model.matrix(fixed2[-2], data=data0)
@@ -2104,7 +2107,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                #wRandom=wRandom,b0Random=b0Random,
                sharedtype = sharedtype, nonlin = nonlin, centerpoly = centerpoly0,
                posfix=posfix,CPUtime=cost[3], nMC = nMC, b=out$b, v=out$v,
-               thres=thres,discrim=discrim)
+               thres=thres,discrim=discrim,
+               rangeTsurv = c(minT, maxT), rangeTlong = rangeTlong)
     
     names(res$best) <- namesb
     class(res) <-c("jointLPM")
