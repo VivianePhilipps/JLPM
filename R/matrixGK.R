@@ -1,4 +1,4 @@
-matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv = FALSE)
+matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T, deriv = FALSE)
 {
     ## ajouter variable temps aux donnees
     data$tmp_name <- NA
@@ -67,7 +67,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
     Xpred <- as.matrix(cbind(data[, var.time], mat_ef, mat_ea))
 
     Xpred0 <- NULL
-    if(!is.null(T0))
+    if(idtrunc)
     {
         ## matrices pour survie 0->T0
         data[, var.time] <- data$T0 / 2 + data$T0 / 2 * ptsGK # integration [0, T0]
@@ -112,7 +112,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, T0 = NULL, T, deriv =
         Xdt <- derivMat(fixed, random, data, var.time)
 
         Xdt0 <- NULL
-        if(!is.null(T0))
+        if(idtrunc)
         {
             data[, var.time] <- rep(T0, each = 15)
             data[, var.time] <- data$T0 / 2 + data$T0 / 2 * ptsGK

@@ -1238,7 +1238,7 @@ double precision function vrais_i(b,npm,i)
            else !if(idst.eq.2) then   !niv.courant du processus latent
               call fct_risq_irtsre_2(i,ke,brisq,bassoCL,bassoCS,beta_ef,ui,risq,surv,surv0)  
            end if
-           
+
            sumnrisq = sumnrisq + nprisq(ke)
            sumnassoCL = sumnassoCL + nassoCLevt(ke)
            sumnassoCS = sumnassoCS + nassoCSevt(ke)
@@ -1359,7 +1359,7 @@ double precision function vrais_i(b,npm,i)
                  fevt=fevt*exp(bevtint(ke))
               end if
            end if
-           
+
            ! risque cumule jusque Ti
            if (idst(ke).eq.1) then
             Surv_glob=surv_glob + survint(ke)*exp(varexpsurv+easurv) + &
@@ -1402,7 +1402,7 @@ double precision function vrais_i(b,npm,i)
 
      end if
      
-     !if(l.lt.4) print*,"l=", l, " som=",som
+    ! if(l.lt.4) print*,"l=", l, " som=",som, " vrais_Y=", vrais_Y, " vrais_surv=", vrais_surv
  !    print*,"fin l=",l
   end do ! fin boucle nMC
   
@@ -2215,6 +2215,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
         asso = asso + sigmoid(csi, bassoCS)
      end if
   end if
+
   risq(k) = risq(k) * exp(asso)
 
 !!! risque cumule par quadrature de Kronrod
@@ -2527,8 +2528,9 @@ double precision function curlev(i, beta, ui)
   double precision, dimension(nef) :: beta
   double precision, dimension(nea) :: ui
 
+  curlev = 0.d0
   do j = 1, id_nXcl(1) ! id_nXcl(1) = nef
-     curlev = Xcl_Ti(i, 1 + j) * beta(j)
+     curlev = curlev + Xcl_Ti(i, 1 + j) * beta(j)
   end do
   
   do j = 1, id_nXcl(2) ! id_nXcl(2) = nea

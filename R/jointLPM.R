@@ -1286,7 +1286,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
           colnames(data_tmp) <- c(subject,nom.var)
 
           deriv <- ifelse(length(grep("CS", sharedtype)) > 0, TRUE, FALSE)
-          X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, tsurv0, tsurv, deriv)
+          X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, idtrunc, tsurv0, tsurv, deriv)
                                         # a controler : tsurv0=NULL si pas idtrunc ??
           Xpred_Ti <- X_GK$Xpred_Ti     # X(t) pour calculer lambda(Ti)
           Xpred <- X_GK$Xpred_cl        # X(t) pour calculer S(Ti)
@@ -1834,7 +1834,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     ###############
     ###   MLA   ###
     ###############
-    
+
     if(maxiter==0)
     {
         vrais <- loglik(b, Y0, X0, tsurv0, tsurv, devt, ind_survint, idea, idg, idcor,
