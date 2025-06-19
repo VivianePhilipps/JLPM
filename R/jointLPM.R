@@ -1888,6 +1888,10 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     NPM <- NPM+nfix
         
     ## item parameters
+    thres <- NA
+    discrim <- NA
+    if(any(idlink == 3))
+    {
     # thresholds
     thres <- data.frame(matrix(NA,nrow=max(nbmod)-1,ncol=sum(idlink==3)))
     names(thres) <- nomsY[idlink==3]
@@ -1907,7 +1911,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     # discrimination
     discrim <- 1 / as.numeric(best[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny][idlink==3])
-      
+     } 
     
     ## mettre NA pour les variances et covariances non calculees et  0 pr les prm fixes
     if(length(posfix))
