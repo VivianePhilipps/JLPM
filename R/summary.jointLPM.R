@@ -265,7 +265,7 @@ summary.jointLPM <- function(object,...)
     if(ncontr>0)
     {
       indice2 <- 1:NPM*(1:NPM+1)/2
-      nom.contr <- x$Xnames[as.logical(x$idcontr)]
+      nom.contr <- x$Names$Xnames[as.logical(x$idcontr)]
       for (i in 1:sum(x$idcontr))
       {
         ##matrice de variance pour test et se du dernier coef
@@ -334,16 +334,16 @@ summary.jointLPM <- function(object,...)
       col4 <- rep(NA,length(tmp[,4]))
       col4[which(!is.na(tmp[,4]))] <- format(as.numeric(sprintf("%.5f",na.omit(tmp[,4]))),nsmall=5,scientific=FALSE)
       
-      pf <- sort(intersect(c(nrisqtot+nvarxevt+1:(nef+ncontr)),posfix))
+      pf <- sort(intersect(c(nrisqtot+nvarxevt+nasso+1:(nef+ncontr)),posfix))
       p <- rep(0,length(tmp[,1]))
-      p[which(rownames(tmp) %in% c(x$Names$Xnames,x$Names$Ynames[-ny]))] <- c(nrisqtot+nvarxevt+1:(nef+ncontr))
+      p[which(rownames(tmp) %in% c(x$Names$Xnames,x$Names$Ynames[-ny]))] <- c(nrisqtot+nvarxevt+nasso+1:(nef+ncontr))
       col1[which(p %in% pf)] <- paste(col1[which(p %in% pf)],"*",sep="")
       col2[which(p %in% pf)] <- NA
       col3[which(p %in% pf)] <- NA
       col4[which(p %in% pf)] <- NA
       
       tmp <- cbind(col1,col2,col3,col4)
-      rownames(tmp) <- rownames(tTable)
+      rownames(tmp) <- rownames(tTable[[2]])
       maxch <- apply(tmp,2,maxchar)
       maxch[1] <- maxch[1]-1
       
