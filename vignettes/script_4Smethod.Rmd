@@ -1,0 +1,906 @@
+---
+title: "Replication script for the 4Smethod"
+output: 
+  rmarkdown::html_vignette:
+  toc: true # table of content true
+  toc_depth : 3
+vignette: >
+  %\VignetteIndexEntry{script_4Smethod}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<style>
+body {
+  text-align: justify;
+}
+</style>
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette illustrates how to replicate the **4S methodology** following the steps described Saulnier et al. (202? - preprint :  arXiv:2407.08278). 
+The 4S method is a comprehensive strategy in four consecutive steps 
+to analyze the repeated item data of multidimensional measurement scales or questionnaires in longitudinal studies. 
+
+The 4S method successively <br>
+(**1**)  structures  the  scale  into  subdimensions  satisfying  three  calibration  assumptions  (unidimensionality, conditional independence, increasing monotonicity), <br>
+(**2**) describes each subdimension progression using a joint latent process model (**JLPM**) which includes a continuous-time item response theory model for the longitudinal subpart, <br>
+(**3**) aligns each  subdimension’s  progression  with  disease  stages  through  a  projection  approach, <br>
+(**4**)  identifies  the  most informative items across disease stages using the Fisher information.
+
+# Importation
+
+The following libraries are used in this vignette:
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2) # data description plots
+library(ggalluvial) # sankeyplot
+library(psych) # step 1 : EFA  # version prior 2.0 required 
+library(polycor) # step 1 : polychoric correlation matrix
+library(lavaan) # step 1 : CFA
+library(mokken) # step 1 : check monotonicity
+library(plot.matrix) # step 1 : plot colored matrix
+library(fmsb) # step 2 : plot spiderchart
+library(survival) # data description : Kaplan Meier
+library(JLPM) # steps 2 and 3 : model estimation
+```
+
+\newpage
+
+# Dataset
+
+The illustration is on a simulated dataset. 
+
+```{r}
+load("simulated_data.RData")
+```
+
+```{r, results='hide', echo=FALSE}
+N <- length(unique(data$ID)) # nb individuals
+K <- 11 # nb of items
+```
+
+The dataset is a simulated sample of N=**`r N` patients** with K=**`r K` 5-level items** measured at repeated annual visits from 0 to 10 years, and a time-to-event collected in continuous time.
+
+The data.frame is in longitudinal format with **`r nrow(data)` rows** corresponding to the follow-up visits of the **`r N`** patients, and **`r ncol(data)` columns** corresponding to the different variables: 
+
+- **ID** the identification number of the patient
+- **t** the time of measurement (years in the study)
+- **X** a binary time-independent covariate
+- **item*****k*** the item k with level in {0, 1, 2, 3}
+- **stage** the disease stage (0 to 4)
+- **T** the minimum time between the event or censoring occurrence
+- **D** the indicator of event or censoring
+
+```{r}
+N <- length(unique(data$ID)) # nb individuals
+K <- 11 # nb of items
+nl <- 5 # nb of levels
+
+str(data)
+```
+
+## Description of the sample at baseline
+```{r}
+data0 <- data[which(data$t==0),]
+summary(data0)
+```
+
+\newpage
+
+## Items' observed individual trajectories
+```{r, fig.align="center", fig.height=5.25, fig.width=7.5}
+par(mfrow=c(3,4), mar=c(4,4,3,1))
+
+for(k in 1:K){  # for each item
+  
+  plot(x = data$t[which(data$ID == 1)], 
+       y = data[which(data$ID == 1),paste("item",k,sep="")],
+       xlim = c(0,10), ylim = c(0,nl-1), type = "l", lwd = 1,
+       main=paste("item",k,sep=""), xlab = "Years", ylab = "Level",
+       bty = "n", las = 1, cex.main = 1.5,
+       cex.axis = 1, axes = TRUE)
+  for(i in 2:N)
+    lines(x = data$t[which(data$ID == i)], 
+          y = data[which(data$ID == i),paste("item",k,sep="")], 
+          lwd = 1, lty = 1)
+  
+}
+```
+
+\newpage
+
+## Stage distribution over time
+```{r, fig.align="center", fig.height=3.75, fig.width=5.5}
+data$t_rounded <- round(data$t)
+data$stage_factor <- factor(data$stage, levels=5:1)
+
+ggplot(data,
+       aes(x = t_rounded, stratum = stage_factor, alluvium = ID, 
+           fill = stage_factor, label = stage_factor)) +
+  geom_flow() +
+  geom_stratum(width = .45) +
+  theme_light()  +
+  scale_fill_manual(values = c("#08306B","#2171B5","#6BAED6","#C6DBEF","#F7FBFF")) +
+  labs(y = "Nb of patients", x = "Years", fill = "Stage")
+```
+
+\newpage
+
+## Time to event
+```{r, fig.align="center", fig.height=3.5, fig.width=4.5}
+KM <- survfit(Surv(time = T, event = D) ~ 1, data = data0)
+
+par(mar=c(4,4,1.5,1))
+plot(KM,
+     fun = "S", ylim = c(0,1), cex.axis = .8, cex.main = 1,
+     bty="n", las = 1, xlab="Years", ylab="Probability",
+     main = "Kaplan-Meier estimated survival function")
+abline(h=.5,col="grey",lty=3,lwd=2)
+abline(v=summary(KM)$table["median"],col="grey",lty=3,lwd=2)
+```
+Among the patients, **`r summary(KM)$table["events"]` (`r round((summary(KM)$table["events"] / N)*100)`%)** experienced the event during the study, with a survival median around **`r round(summary(KM)$table["median"],2)`** years.
+
+\newpage
+
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+
+# STEP 1 - Structuring 
+**Identification of the scale's subdimensions**
+
+The first preliminary step consists in structuring the measurement scale into unidimensional subdimensions (also called latent traits) that comply three central assumptions:  
+
+- *unidimensionality*: all the items of a subdimension should represent an homogeneous latent trait,
+- *conditional independence*: the latent trait should capture the whole correlation across items with no remaining residual correlation between items, 
+- *increasing monotonicity*: higher item level should consistently reflect a higher underlying trait level.
+
+We followed the recommended strategy reported by the PROMIS (Patient-Reported Outcomes Measurement Information System) initiative in Reeve et al. (2007) [1] for cross-sectional data.
+We adapted the PROMIS method to longitudinal data by using a resampling strategy: we randomly selected a single visit per subject to create a pseudo independent sample of size N on which the PROMIS method could be used, and we replicated this procedure multiple times to account for sampling fluctuations.
+
+Note that the three calibration assumptions may be successively evaluated with stepbacks or systematic reevaluations to measure the impact of certain decisions.
+
+```{r}
+R <- 50 # number of replicates
+
+seeds <- sample(x=1:1000,size=R)
+```
+
+Illustration on replicate 1:
+```{r}
+r <- 1 # replicate
+
+set.seed(seeds[r]) # seed
+
+# random selection of one visit per patient
+select <- sapply(X=table(data$ID), 
+                 FUN=function(x){sample(1:x,size=1)})
+data_r <- data[which(data$ID==1),][select[1],]
+for(i in 2:N)
+  data_r <- rbind(data_r,data[which(data$ID==i),][select[i],])
+```
+
+\newpage
+
+## Unidimensionality
+Determine the optimal number of subdimensions and item assignment to dimensions.
+
+### General EFA
+An explanatory factorial analysis (EFA) is performed on all the item data to identify the independent subdimensions measured by the scale. The optimal number of subdimensions can be determined by dressing the scree plot of the successive eigenvalues and chosen the largest either as the largest number of factors with successive eigenvalues greater than value 1 (Kaiser criterion), or identifying the "elbow" where the eigenvalues begin to plateau (Cattell criterion). This analysis can be carried out using function *fa.parallel()* from the R-package **psych**.
+```{r, message=FALSE, warning=FALSE, fig.align="center", fig.height=3, fig.width=4}
+par(mar=c(4.5,4.5,2,0),cex=.8)
+screeplot <- fa.parallel(data_r[,c(paste("item",1:K,sep=""))],
+                         fm = 'minres', fa = 'fa', cor='poly', plot=TRUE)
+```
+Here, the analysis suggests 2 factors.
+
+### Polychoric correlation matrix
+Items are assigned to the subdimension they contribute the most based on factor loadings resulting from the polychoric correlation matrix, with rotation maximizing within-factor variance (ensuring that each item is strongly associated with its assigned dimension and weakly with others), and representing the strength of association between the items and the latent traits. We assume each item contributes to only one subdimension.
+If the higher loading of an item is lower than 0.3, its contribution is considered too small to be assigned to any subdimension. 
+
+```{r, fig.align="center", fig.height=3, fig.width=4}
+pc <- hetcor(data_r[,c(paste("item",1:K,sep=""))], ML=TRUE)   
+  
+efa2 <- fa(r=pc$correlations, nfactors=2, rotate="varimax")
+
+contrib2 <- data.frame(ITEM = paste("item",1:K,sep=""),
+                       FACT1 = efa2$loadings[,2],
+                       FACT2 = efa2$loadings[,1])
+contrib2$max_loading <- apply(X=contrib2[,-1],MARGIN=1,FUN=max)
+contrib2$FACTOR <- ifelse(contrib2$max_loading == contrib2$FACT1,1,2)
+contrib2$FACTOR[which(contrib2$max_loading<.3)] <- NA
+
+par(mar=c(4,4,2,1),cex=.8)
+barplot(cbind(FACT1,FACT2)~ITEM,
+        data=contrib2, beside=TRUE, col=c("blue","red"),
+        space = c(.1,2),ylim=c(-.1,1.2), xlab = "item",
+        las=1,names.arg=1:K,main="Items' contribution to 2 dimensions")
+abline(h=0.3,lwd=2,lty=3,col="grey40") 
+abline(h=0,lwd=2,lty=1,col="black")
+legend(x="topright",legend=paste("dimension ",1:2,sep=""),col=c("blue","red"),pch=16,bty="n")
+```
+Item assignment: dimension 1 (<span style="color: blue;">blue</span>) with items 1 to 4 and dimension 2 (<span style="color: red;">red</span>) with items 5 to 10.
+
+### EFA per dimension
+At this stage, one EFA can be performed per subdimension to ensure only one latent factor is highlighted.
+```{r, message=FALSE, warning=FALSE, fig.align="center", fig.height=3, fig.width=6.5}
+par(mfrow=c(1,2),mar=c(4.5,4.5,2,0),cex=.5)
+screeplot_dim1 <- fa.parallel(data_r[,paste("item",1:5,sep="")], 
+                              fm = 'minres', fa = 'fa', cor='poly')
+screeplot_dim2 <- fa.parallel(data_r[,paste("item",6:11,sep="")], 
+                              fm = 'minres', fa = 'fa', cor='poly')
+```
+The analysis concludes to 1 factor (i.e., unidimensionality) for both dimensions.
+
+### CFA
+A confirmatory factorial analysis (CFA) is performed on the identified subdimensions to evaluate the model fit. According to Reeve et al. (2007), the model fit is considered sufficient if the following criteria are satisfied: comparative fit index (CFI) > 0.95, Tucker Lewis index (TLI) > 0.95, root means square error of approximation (RMSEA) < 0.06, and standardized root mean square residual (SRMR) < 0.08.
+CFI and TLI assess the fit between the estimated model and a null model assuming no constraint on the structure.
+RMSEA and SRMR assess the fit  between the estimated model and the observed data.
+This analysis can be carried out using function *cfa()* from the R-package **lavaan**.
+```{r}
+rep2 <- paste(paste(" dim1 =~ ",paste(paste("item",1:5,sep=""),collapse="+"),"\n"),
+              paste(" dim2 =~ ",paste(paste("item",6:11,sep=""),collapse="+")),sep="")
+
+fit2 <- cfa(rep2, 
+            data = data_r, 
+            ordered = paste("item",1:K,sep=""))
+fitMeasures(object=fit2,fit.measures=c("cfi","tli","rmsea","srmr"))
+```
+The fit criteria are respected.
+
+\newpage
+
+## Conditional independence
+
+The correlation matrix between the CFA predicted values and the observations is reported to identify residual correlation. PROMIS authors Reeve et al. (2007) [1] consider two items are substantially correlated if their residual correlation exceeds 0.2. In case the two correlated items are assigned to the same subdimension, one of them should be removed, as considered as redundant and according to clinical relevance.
+```{r}
+N_cov <- list(
+  observed=inspect(fit2, 'sampstat')$cov,
+  fitted=fitted(fit2)$cov
+)
+
+N_cor <- list(
+  observed=cov2cor(N_cov$observed),
+  fitted=cov2cor(N_cov$fitted)
+)
+
+resid <- N_cor$observed - N_cor$fitted  # residuals
+round(resid,1)
+```
+Here, no redundancy is observed.
+
+\newpage
+
+## Increasing monotonicity
+
+The monotonicity is visually inspected for each item by plotting the mean item levels by decile of the rest-score of the assigned subdimension (i.e., sum-score of all the other items from the subdimension except this one), or the item higher-level probabilities by decile of the rest-score. Reeve et al. (2007) [1] recommend to visually check that the curves are consistently increasing or at least constant. 
+This analysis can be carried out using function *check.monotonicity()* from the R-package **mokken**.
+```{r, message=FALSE, warning=FALSE, fig.align="center", fig.height=4, fig.width=7.5}
+monot_D1 <- check.monotonicity(data_r[,paste("item",1:5,sep="")],minsize=50)
+monot_D2 <- check.monotonicity(data_r[,paste("item",6:11,sep="")],minsize=50)
+
+
+par(mfrow=c(3,4),mar=c(4.5,4,1,4),cex=.5)
+col <- c(gray(.8),gray(.6),gray(.4),gray(.2))
+
+# dimension 1
+for(i in 1:5){
+  
+  plot(y = monot_D1$results[[i]][[2]][,"P(X >=1)"], 
+       x = monot_D1$results[[i]][[2]][,"Hi Score"],
+       type = "l", col = col[1], ylim = c(0,1), xlim = c(0,(5-1)*(nl-1)), las = 1,
+       bty = "l", xlab = "rest-score", ylab = "probability")
+  mtext(text = paste("item",i,sep=""), cex = .5, side = 3, line = 0, font = 2, col = "blue")
+  for(m in 2:4)
+    lines(y = monot_D1$results[[i]][[2]][,paste("P(X >=",m,")",sep="")], 
+          x = monot_D1$results[[i]][[2]][,"Hi Score"], col = col[m])
+  par(new=TRUE)
+  plot(y = monot_D1$results[[i]][[2]][,"Mean"], x = monot_D1$results[[i]][[2]][,"Hi Score"], 
+       lwd = 2, type = "l", col = "black", lty = 2, xlim=c(0,(5-1)*(nl-1)), ylim=c(0,nl-1),
+       xlab="",ylab="",yaxt="n",bty="l",legend=NULL,cex.lab=1.5,cex.axis=1.5,axes = F)
+    axis(4, line=0, las=1); mtext(text = "response", cex = .5, side = 4, line = 2.5)
+  
+}
+
+# dimension 2
+for(i in 1:6){
+  
+  plot(y = monot_D2$results[[i]][[2]][,"P(X >=1)"], 
+       x = monot_D2$results[[i]][[2]][,"Hi Score"],
+       type = "l", col = col[1], ylim = c(0,1), xlim = c(0,(6-1)*(nl-1)), las = 1,
+       bty = "l", xlab = "rest-score", ylab = "probability")
+  mtext(text = paste("item",5+i,sep=""), cex = .5, side = 3, line = 0, font = 2, col = "red")
+  for(m in 2:4)
+    lines(y = monot_D2$results[[i]][[2]][,paste("P(X >=",m,")",sep="")], 
+          x = monot_D2$results[[i]][[2]][,"Hi Score"], col = col[m])
+  par(new=TRUE)
+  plot(y = monot_D2$results[[i]][[2]][,"Mean"], x = monot_D2$results[[i]][[2]][,"Hi Score"], 
+       lwd = 2, type = "l", col = "black", lty = 2, xlim=c(0,(6-1)*(nl-1)), ylim=c(0, nl-1),
+       xlab="",ylab="",yaxt="n",bty="l",legend=NULL,cex.lab=1.5,cex.axis=1.5,axes = F)
+    axis(4, line=0, las=1); mtext(text = "response", cex = .5, side = 4, line = 2.5)
+  
+}
+
+# legend
+plot(x = c(0,1), y = c(0,1), col="white",main="", xlab = "", ylab = "",bty = "n", axes = FALSE)
+legend(x="center",bty="n",cex=1,lwd=1,
+       legend=c(paste("obs P(Y >=",1:(nl-1),")",sep=""),"obs mean response"),
+       text.col=c(col,"black"),col=c(col,"black"),lty=c(rep(1,nl-1),2))
+```
+
+\newpage
+
+## → Results over replicates
+
+The final structure is determined after the aggregation over replicates. Items consistently assigned to the same subdimension are assigned to it. Items repeatedly unassigned to any subdimension are excluded from the analysis as they provide no additional information. Items straddling two subdimensions are reviewed and assigned based on their clinical relevance and subdimension loadings.
+```{r}
+REPL <- list(NULL)
+
+for(r in 1:R){ # for each replicate
+  
+  set.seed(seeds[r]) # seed
+
+  # random selection of one visit per patient
+  select <- sapply(X=table(data$ID), 
+                   FUN=function(x){sample(1:x,size=1)})
+  data_r <- data[which(data$ID==1),][select[1],]
+  for(i in 2:N)
+    data_r <- rbind(data_r,data[which(data$ID==i),][select[i],])
+
+  # item contributions
+  pc <- hetcor(data_r[,c(paste("item",1:K,sep=""))], ML=TRUE)   
+  efa2 <- fa(r=pc$correlations, nfactors=2, rotate="varimax")
+
+  contrib2 <- data.frame(ITEM = paste("item",1:K,sep=""),
+                         FACT1 = efa2$loadings[,2],
+                         FACT2 = efa2$loadings[,1])
+  contrib2$max_loading <- apply(X=contrib2[,-1],MARGIN=1,FUN=max)
+  contrib2$FACTOR <- ifelse(contrib2$max_loading == contrib2$FACT1,1,2)
+  contrib2$FACTOR[which(contrib2$max_loading<.3)] <- NA
+
+  # save
+  REPL[[r]]$contrib <- contrib2
+  if(r != R)
+    REPL <- c(REPL,list(NULL))
+}
+```
+
+```{r, message=FALSE, warning=FALSE, fig.align="center", fig.height=3, fig.width=7.5}
+par(mfrow=c(1,2),mar=c(4.5,4,.5,1),cex=.8)
+
+# order : per replicates
+contrib <- sapply(REPL, function(x) x$contrib$FACTOR)
+plot(contrib, col = c("blue","red"), 
+     key = NULL, xlab = "replicates", ylab = "item", main ="", las = 1)
+
+# order : per percentage % over replicates
+contrib_bydim <- t(apply(contrib,1,function(x){table(factor(x,levels=1:2))}))
+contrib_bydim_matrix <- t(apply(contrib_bydim,1,function(x){rep.int(1:2,times=x)}))
+
+plot(contrib_bydim_matrix, col = c("blue","red"), 
+     key = NULL, polygon.cell = list(border=FALSE), axis.col = NULL, 
+     xlab = "percentage of replicates", ylab = "item", main ="", las = 1)
+segments(x0=.5, y0=seq(from=.5,to=K+.5,by=1), x1=75.5, y1=seq(from=.5,to=K+.5,by=1))
+segments(x0=R+.5, y0=.5, x1=R+.5, y1=K+.5)
+axis(1,line=0,lwd=1,labels=c("0%","25%","50%","75%","100%"),
+     at=c(0,R/4,R/2,R*3/4,R)+.5,cex.axis=1)
+```
+
+Final item assignment:
+```{r}
+# dimension 1
+item_num_d1 <- 1:5
+item_lab_d1 <- paste("item",item_num_d1,sep="")
+ni1 <- length(item_num_d1)
+dim_col_d1 <- "blue"
+item_col_d1 <- paletteer::paletteer_c("ggthemes::Green-Blue Diverging",n=ni1)
+
+# dimension 2
+item_num_d2 <- 6:11
+item_lab_d2 <- paste("item",item_num_d2,sep="")
+ni2 <- length(item_num_d2)
+dim_col_d2 <- "red"
+item_col_d2 <- paletteer::paletteer_c("ggthemes::Sunset-Sunrise Diverging",n=ni2+1)[-1] 
+```
+
+\newpage
+
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+
+# STEP 2 - Sequencing
+**Description of each subdimension progression**
+
+The trajectory of each dimension continuum underlying the repeated item data is modeled over time from the repeated item data using a **joint Item Response Theory (IRT) model** adapted to ordinal repeated measures and time-to-event data [2]. The model is composed of a longitudinal submodel and a survival submodel. The parameter are simultaneously estimated by maximum likelihood using the R-package **JLPM** (available on CRAN and https://github.com/VivianePhilipps/JLPM). 
+
+The longitudinal submodel combines:
+- a linear mixed **structural model** to describe the underlying dimension deterioration over time according to covariates and functions of time, the fixed effects defining the mean dimension trajectory at the population level and individual correlated random effects capturing individual deviations;
+- an item-specific cumulative probit **measurement model** to define the link between the underlying dimension and each item observation. 
+The **survival submodel** is a proportional hazard survival model (or a cause-specific proportional hazard model in case of competing causes) adjusted for the current underlying dimension level as a linear predictor to account for the informative dropout induced by the event. 
+
+For further details, please refer to Saulnier et al. [2].
+
+
+## Estimation of each dimension trajectory using JLPM
+```{r, results='hide', echo=FALSE}
+load("estimated_models.RData")
+```
+
+```{r, eval=FALSE}
+# Dimension 1
+D1 <- jointLPM(fixed = item1 + item2 + item3 + item4 + item5 ~ t,
+               random = ~ 1 + t,
+               survival = Surv(T, D) ~ 1,
+               sharedtype = "CL",
+               var.time = "t",
+               subject = "ID",
+               data = data,
+               link = "thresholds",
+               methInteg = "QMC",
+               nMC = 1000,
+               nproc = 20,
+               verbose = T)
+
+# Dimension 2
+D2 <- jointLPM(fixed = item6 + item7 + item8 + item9 + item10 + item11 ~ t,
+               random = ~ 1 + t,
+               survival = Surv(T, D) ~ 1,
+               sharedtype = "CL",
+               var.time = "t",
+               subject = "ID",
+               data = data,
+               link = "thresholds",
+               methInteg = "QMC",
+               nMC = 1000,
+               nproc = 20,
+               verbose = T)
+```
+
+\newpage
+
+The summary of the estimation for dimension 1:
+```{r}
+sumD1 <- summary(D1)
+```
+
+The summary of the estimation for dimension 2:
+```{r}
+sumD2 <- summary(D2)
+```
+
+
+## Predicted items' trajectories over time
+```{r, fig.align="center", fig.height=6, fig.width=7}
+## Conversion JLPM -> multlcmm
+# extracting only the longitudinal submodel (necessary for predictions)
+d1 <- convert(object=D1,to="multlcmm")
+d2 <- convert(object=D2,to="multlcmm")
+
+## Predicted values of the items over a grid of times
+time <- seq(0,10,1); nt <- length(time)
+# Dimension 1
+pred_D1 <- predictY(x=d1,
+                    newdata=data.frame(t=time,X=0),
+                    var.time="t",
+                    methInteg=1,nsim=1000)
+# Dimension 2
+pred_D2 <- predictY(x=d2,
+                    newdata=data.frame(t=time,X=0),
+                    var.time="t",
+                    methInteg=1,nsim=1000)
+
+## Plots
+generate_gradient <- function(color1, color2, n) {
+  color_palette <- colorRampPalette(c(color1, color2))
+  return(color_palette(n))
+}
+
+par(mfcol=c(2,2),cex=1)
+
+# PREDICTED TRAJECTORIES
+
+# dimension 1
+par(mar=c(4.5,4,1,1)) 
+plot(x = pred_D1$times$t, y = pred_D1$pred$Ypred[which(pred_D1$pred$Yname==item_lab_d1[1])], 
+     col = item_col_d1[1], lwd = 2, type = "l", xlim = range(time), ylim = c(0,nl-1), 
+     bty = "n", xlab = "Time", ylab = "Item level", main = "Dimension 1", col.main = "blue")
+for(i in 2:ni1)
+  lines(x = pred_D1$times$t, y = pred_D1$pred$Ypred[which(pred_D1$pred$Yname==item_lab_d1[i])], 
+        col = item_col_d1[i], lty = 1, lwd = 2)
+legend(x = "bottomright", lty = 1, lwd = 1, col = item_col_d1[1:ni1], legend = item_lab_d1, 
+       bty = "n", cex = .8, ncol = 2)
+
+# dimension 2
+par(mar=c(4.5,4,1,1)) 
+plot(x = pred_D2$times$t, y = pred_D2$pred$Ypred[which(pred_D2$pred$Yname==item_lab_d2[1])], 
+     col = item_col_d2[5], lwd = 2, type = "l", xlim = range(time), ylim = c(0,nl-1), 
+     bty = "n", xlab = "Time", ylab = "Item level", main = "Dimension 2", col.main = "red")
+for(i in 2:ni2)
+  lines(x = pred_D2$times$t, y = pred_D2$pred$Ypred[which(pred_D2$pred$Yname==item_lab_d2[i])], 
+        col = item_col_d2[i], lty = 1, lwd = 2)
+legend(x = "bottomright", lty = 1, lwd = 2, col = item_col_d2, legend = item_lab_d2, 
+       bty = "n", cex = .8, ncol = 2)
+
+# SPIDERCHART
+
+# dimension 1
+time_col <- generate_gradient(color1="white",color2="blue",n=nt+1)[-1]
+time_col_rgb <- col2rgb(time_col, alpha = TRUE)
+time_col_alpha <- rgb(time_col_rgb[1,],time_col_rgb[2,],time_col_rgb[3,],
+                      time_col_rgb[4,]*0.3, maxColorValue = 255)
+
+par(mar=c(3,0,0,0))
+radarchart(df = data.frame(rbind(rep(0, ni1), 
+                                 rep(nl-1, ni1),
+                                 matrix(pred_D1$pred$Ypred,nrow=nt)))[,c(1,ni1:2)],
+           cglty = 1, cglcol = "dimgray",
+           seg = nl-1, centerzero = TRUE,
+           plty = 1, pcol = time_col, plwd = 2, 
+           vlabels = item_lab_d1[c(1,ni1:2)],
+           pfcol=time_col_alpha)  
+par(xpd=T)
+legend(x=-1.8,y=-1.5, horiz = T, legend = time, title = "Year(s)",
+       bty = "n", pch = 20, col = time_col, text.col = "black", cex = .6)
+
+# dimension 2
+time_col <- generate_gradient(color1="white",color2="red",n=nt+1)[-1]
+time_col_rgb <- col2rgb(time_col, alpha = TRUE)
+time_col_alpha <- rgb(time_col_rgb[1,],time_col_rgb[2,],time_col_rgb[3,],
+                      time_col_rgb[4,]*0.3, maxColorValue = 255)
+
+par(mar=c(3,0,0,0))
+radarchart(df = data.frame(rbind(rep(0, ni2), 
+                                 rep(nl-1, ni2),
+                                 matrix(pred_D2$pred$Ypred,nrow=nt)))[,c(1,ni2:2)],
+           cglty = 1, cglcol = "dimgray",
+           seg = nl-1, centerzero = TRUE,
+           plty = 1, pcol = time_col, plwd = 2, 
+           vlabels = item_lab_d2[c(1,ni2:2)],
+           pfcol=time_col_alpha)  
+par(xpd=T)
+legend(x=-1.8,y=-1.5, horiz = T, legend = time, title = "Year(s)",
+       bty = "n", pch = 20, col = time_col, text.col = "black", cex = .6)
+```
+
+\newpage
+
+## Sequence of items' impairment according to the dimension continuum
+```{r, fig.align="center", fig.height=3.5, fig.width=8}
+par(mfrow=c(1,2))
+
+## dimension 1
+level_col_d1 <- generate_gradient(color1="white", color2="blue", n=nl+1)[-1]
+
+# item thresholds
+thres1 <- D1$thres
+thres1_bounds <- range(thres1)
+# item discrimination
+discrim1 <- D1$discrim
+# covariate effects
+varexp1 <- as.data.frame(sumD1$mixedModel)$coef[-1]
+varexp1_lab <- paste(row.names(sumD1$mixedModel),
+                     " (",ifelse(as.data.frame(sumD1$mixedModel)$'p-value'==0,
+                                 "<0.001",
+                                 as.data.frame(sumD1$mixedModel)$'p-value'),")",sep="")[-1]
+
+# plot
+par(mar = c(0,.5,2,.5))
+p <- ni1; ext <- .75
+plot(y = rep(p,2), x = c(thres1_bounds[1]-ext,thres1[1,item_lab_d1[1]]), 
+     lwd = 30, type = "l", col = level_col_d1[1], 
+     xlim = thres1_bounds + c(-1,1)*ext, ylim = c(-1.2, 6.5),
+     xlab = "", ylab = "", main = "Dimension 1", col.main = "blue", 
+     yaxt = "n", bty = "l", legend = NULL, cex.lab=1.5, cex.axis=1.5, axes = F)
+for(i in 1:ni1){
+  lines(y = rep(p,2), x = c(thres1_bounds[1]-ext,thres1[1,item_lab_d1[i]]), 
+        lwd = 30, col = level_col_d1[1])
+  for(m in 1:(nl-2))
+    lines(y = rep(p,2), x = thres1[m:(m+1),item_lab_d1[i]], 
+          lwd = 30, col = level_col_d1[m+1])
+  lines(y = rep(p,2), x = c(thres1[nl-1,item_lab_d1[i]],thres1_bounds[2]+ext),
+        lwd = 30, col = level_col_d1[nl])
+  p <- p-1
+}
+mtext(text = item_lab_d1, side=4, at = ni1:1, line = -18, cex = 1, las=1, font = 1, col="white")
+# varexp
+p <-  thres1_bounds[1]; deb <- 0
+rect(xleft = rep(p,length(varexp1)), xright = p+varexp1, 
+     ybottom = deb-0.15-(1:length(varexp1)-1)*.8, ytop = deb+0.15-(1:length(varexp1)-1)*.8, 
+     col = "black")
+lines(x = rep(p,2), y = c(deb+0.35,deb-0.35-(length(varexp1)-1)), 
+      lty = 3, lwd = 2, col = "darkgrey")
+p <- p + ifelse(varexp1<0,0,varexp1) + 0.05
+text(x = p, y = -seq(from=0,to=length(varexp1)-1,by=0.8)+deb, 
+     pos = 4, labels = varexp1_lab, cex = .8)    
+
+
+## dimension 2
+level_col_d2 <- generate_gradient(color1="white", color2="red", n=nl+1)[-1]
+
+# item thresholds
+thres2 <- D2$thres
+thres2_bounds <- range(thres2)
+# item discrimination
+discrim2 <- D2$discrim
+# covariate effects
+varexp2 <- as.data.frame(sumD2$mixedModel)$coef[-1]
+varexp2_lab <- paste(row.names(sumD2$mixedModel),
+                     " (",ifelse(as.data.frame(sumD2$mixedModel)$'p-value'==0,
+                                 "<0.001",
+                                 as.data.frame(sumD2$mixedModel)$'p-value'),")",sep="")[-1]
+
+# plot
+par(mar = c(0,.5,2,.5))
+p <- ni2; ext <- .75
+plot(y = rep(p,2), x = c(thres2_bounds[1]-ext,thres2[1,item_lab_d2[1]]), 
+     lwd = 30, type = "l", col = level_col_d2[1], 
+     xlim = thres2_bounds + c(-1,1)*ext, ylim = c(-1.2, 6.5),
+     xlab = "", ylab = "", main = "Dimension 2", col.main = "red", 
+     yaxt = "n", bty = "l", legend = NULL, cex.lab=1.5, cex.axis=1.5, axes = F)
+for(i in 1:ni2){
+  lines(y = rep(p,2), x = c(thres2_bounds[1]-ext,thres2[1,item_lab_d2[i]]), 
+        lwd = 30, col = level_col_d2[1])
+  for(m in 1:(nl-2))
+    lines(y = rep(p,2), x = thres2[m:(m+1),item_lab_d2[i]], 
+          lwd = 30, col = level_col_d2[m+1])
+  lines(y = rep(p,2), x = c(thres2[nl-1,item_lab_d2[i]],thres2_bounds[2]+ext), 
+        lwd = 30, col = level_col_d2[nl])
+  p <- p-1
+}
+mtext(text = item_lab_d2, side=4, at = ni2:1, line = -18, cex = 1, las=1, font = 1, col="white")
+# varexp
+p <-  thres2_bounds[1]; deb <- 0
+rect(xleft = rep(p,length(varexp2)), xright = p+varexp2, 
+     ybottom = deb-0.15-(1:length(varexp2)-1)*.8, ytop = deb+0.15-(1:length(varexp2)-1)*.8, 
+     col = "black")
+lines(x = rep(p,2), y = c(deb+0.35,deb-0.35-(length(varexp2)-1)), 
+      lty = 3, lwd = 2, col = "darkgrey")
+p <- p + ifelse(varexp2<0,0,varexp2) + 0.05
+text(x = p, y = -seq(from=0,to=length(varexp2)-1,by=0.8)+deb, 
+     pos = 4, labels = varexp2_lab, cex = .8)    
+```
+
+\newpage
+
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+
+# STEP 3 - Staging
+**Alignment of each subdimension's progression with disease stages**
+
+The disease stages are projected onto the dimension continuum using a joint bivariate model that estimates the link between the disease stages and the dimension total sumscore. This can be performed using again the R-package **JLPM**, also adapted to treat continuous markers by replacing the cumulative probit measurement models by linear and curvilinear measurement models (the curvilinear model involves a parameterized bijective link function approximated by splines which captures the departure from normality of the variable) [2]. Then, thresholds (on the dimension continuum) that correspond to the disease stages can be deduced by predicting the dimension sumscores that correspond to a change of disease stage and expressing them in the dimension process scale. Note that, as this part requires the computation of dimension sumscores, visits with more than 25% of missing items are omitted.
+
+## Estimation of the proxy model
+```{r}
+data$D1_score <- rowSums(data[,item_lab_d1])
+data$D2_score <- rowSums(data[,item_lab_d2])
+```
+
+```{r, eval=FALSE}
+# dimension 1
+D1ss <- jointLPM(fixed = D1_score + stage ~ t,
+                 random = ~ 1 + t,
+                 survival = Surv(T, D) ~ 1,
+                 sharedtype = "CL",
+                 var.time = "t",
+                 subject = "ID",
+                 data = data,
+                 link = c("5-quant-splines","thresholds"),
+                 methInteg = "QMC",
+                 nMC = 1000,
+                 nproc = 20,
+                 verbose = T)
+
+# dimension 2
+D2ss <- jointLPM(fixed = D2_score + stage ~ t,
+                 random = ~ 1 + t,
+                 survival = Surv(T, D) ~ 1,
+                 sharedtype = "CL",
+                 var.time = "t",
+                 subject = "ID",
+                 data = data,
+                 link = c("5-quant-splines","thresholds"),
+                 methInteg = "QMC",
+                 nMC = 1000,
+                 nproc = 20,
+                 verbose = T)
+```
+
+\newpage
+
+The summary of the estimation of proxy dimension 1:
+```{r}
+summary(D1ss)
+```
+
+The summary of the estimation of proxy dimension 2:
+```{r}
+summary(D2ss)
+```
+
+\newpage
+
+## Predicted item levels according to dimension level with disease stages
+```{r, fig.align="center", fig.height=3, fig.width=8}
+par(mfrow=c(1,2))
+
+## dimension 1
+proj1 <- IRT4Sstaging(D=D1,Dss=D1ss,nsim=10000,bounds=c(-15,15))
+thres1_bounds <- range(thres1_bounds,proj1)
+
+# plot
+par(mar = c(0,.5,2,.5))
+p <- ni1; ext <- 2 
+plot(y = rep(p,2), x = c(thres1_bounds[1]-ext,thres1[1,item_lab_d1[1]]), 
+     lwd = 30, type = "l", col = level_col_d1[1], 
+     xlim = thres1_bounds+c(-1,1)*ext, ylim = c(.5, 6.5),
+     xlab = "", ylab = "", main = "Dimension 1", col.main = "blue", 
+     yaxt = "n", bty = "l", legend = NULL, cex.lab=1.5, cex.axis=1.5, axes = F)
+for(i in 1:ni1){
+  lines(y = rep(p,2), x = c(thres1_bounds[1]-ext,thres1[1,item_lab_d1[i]]), 
+        lwd = 30, col = level_col_d1[1])
+  for(m in 1:(nl-2))
+    lines(y = rep(p,2), x = thres1[m:(m+1),item_lab_d1[i]], 
+          lwd = 30, col = level_col_d1[m+1])
+  lines(y = rep(p,2), x = c(thres1[nl-1,item_lab_d1[i]],thres1_bounds[2]+ext), 
+        lwd = 30, col = level_col_d1[nl])
+  p <- p-1
+}
+mtext(text = item_lab_d1, side=4, at = ni1:1, line = -18, cex = 1, las=1, font = 1, col="white")
+# stages
+for(j in 1:length(proj1))
+  lines(x = rep(proj1[j],2), y = c(0.5,ni1+0.5), lwd = 4, col = "black")
+par(xpd=TRUE)
+text(y = ni1+0.8,
+     x = ( c(proj1,thres1_bounds[2]+ext) - c(thres1_bounds[1]-ext,proj1) ) / 2 +
+       c(thres1_bounds[1]-ext,proj1),
+     labels = as.roman(1:(length(proj1)+1)), cex = 1.5, col = "black", font = 2)
+
+
+## dimension 2
+proj2 <- IRT4Sstaging(D=D2,Dss=D2ss,nsim=10000,bounds=c(-15,15)) 
+thres2_bounds <- range(thres2_bounds,proj2)
+
+# plot
+par(mar = c(0,.5,2,.5))
+p <- ni2; ext <- 2 
+plot(y = rep(p,2), x = c(thres2_bounds[1]-ext,thres2[1,item_lab_d2[1]]), 
+     lwd = 30, type = "l", col = level_col_d2[1], 
+     xlim = thres2_bounds+c(-1,1)*ext, ylim = c(.5, 6.5),
+     xlab = "", ylab = "", main = "Dimension 2", col.main = "red", 
+     yaxt = "n", bty = "l", legend = NULL, cex.lab=1.5, cex.axis=1.5, axes = F)
+for(i in 1:ni2){
+  lines(y = rep(p,2), x = c(thres2_bounds[1]-ext,thres2[1,item_lab_d2[i]]), 
+        lwd = 30, col = level_col_d2[1])
+  for(m in 1:(nl-2))
+    lines(y = rep(p,2), x = thres2[m:(m+1),item_lab_d2[i]], 
+          lwd = 30, col = level_col_d2[m+1])
+  lines(y = rep(p,2), x = c(thres2[nl-1,item_lab_d2[i]],thres2_bounds[2]+ext), 
+        lwd = 30, col = level_col_d2[nl])
+  p <- p-1
+}
+mtext(text = item_lab_d2, side=4, at = ni2:1, line = -18, cex = 1, las=1, font = 1, col="white")
+# stages
+for(j in 1:length(proj2))
+  lines(x = rep(proj2[j],2), y = c(0.5,ni2+0.5), lwd = 4, col = "black")
+par(xpd=TRUE)
+text(y = ni2+0.8,
+     x = ( c(proj2,thres2_bounds[2]+ext)  - c(thres2_bounds[1]-ext,proj2) ) / 2 +
+       c(thres2_bounds[1]-ext,proj2),
+     labels = as.roman(1:(length(proj2)+1)), cex = 1.5, col = "black", font = 2)
+```
+
+\newpage
+
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+
+# STEP 4 - Selecting
+**Identification of the most informative items across disease stages**
+
+The contribution of each item to the underlying dimension can be quantified by the percentage of information it carries at each stage. The information is defined by the Fisher Information function (i.e., the second derivative of the item probability with respect to the underlying dimension) which is integrated over all the underlying dimension values corresponding to a specific stage (as determined in Step 3) to obtain the item-and-stage-specific information. The total information of a dimension at a specific stage is then the sum of all the item-and-stage-specific informations so that the percentage of total information carried by an item at a disease stage can be easily deduced.
+
+## Computation of Fisher information by stage
+
+Information computation for dimension 1:
+```{r}
+# dimension 1
+fisher1 <- IRT4Sselecting(D=D1,proj=proj1)
+lapply(X = fisher1, FUN = round, digits = 2)
+```
+
+Information computation for dimension 2:
+```{r}
+# dimension 2
+fisher2 <- IRT4Sselecting(D=D2,proj=proj2)
+lapply(X = fisher2, FUN = round, digits = 2)
+```
+
+## Plot of item contributions by disease stage
+```{r, fig.align="center", fig.height=4, fig.width=8}
+layout.matrix <- matrix(c(1,1,4,4,
+                          2,3,5,6), nrow = 2, ncol = 4, byrow = T)
+layout(mat = layout.matrix,
+       heights = c(6.5,3.1),
+       widths = c(2.4,2.2,2.4,2.2))
+par(cex=1)
+spc <- 0.5 # space btw barplots
+
+## dimension 1
+# CASE 1 : info percent
+par(mar=c(0.5,0.75,4,4.5)) 
+barplot(height = fisher1$percent_info[ni1:1,], col = item_col_d1, border = TRUE,
+        xlab = "", axes = FALSE, axisnames = FALSE, space = spc)
+axis(4,line=0.5,las=1,lwd=2, labels = c("0%","25%","50%","75%","100%"),
+     at=c(0,25,50,75,100),cex.axis=1,font=2)
+mtext(text = as.roman(1:(length(proj1)+1)), cex = 1, side = 3, line = 0, font = 2,
+      at = .5+((1:(length(proj1)+1))-1)+spc*(1:(length(proj1)+1)))
+mtext(text = "Percentage of information", cex = 1, side = 3, line = 1.35, font = 1.5)
+par(xpd=TRUE)
+text(y = 100 + 35, x = 0.25, 
+     labels = "Dimension 1", cex = 1.25, col = "blue", adj = 0, font = 2)
+# CASE 2 : cumulated info percent
+par(mar=c(0.5,1.5,2.2,4)) 
+barplot(height = colSums(fisher1$raw_info), col = "grey", border = F,
+        xlab = "", axes = FALSE, axisnames = FALSE, space = 0.2)
+axis(4,line=0.5,las=1,lwd=1,labels = c(0.0,"",round(max(colSums(fisher1$raw_info)),1)),
+     at=c(0,max(colSums(fisher1$raw_info))/2,max(colSums(fisher1$raw_info))),
+     cex.axis=.8,font=1,col="grey",col.axis="grey")
+mtext(text = as.roman(1:(length(proj1)+1)), cex = .8, side = 3, line = 0, font = 1, 
+      col = "grey", at = .5+((1:(length(proj1)+1))-1)+.2*(1:(length(proj1)+1)))
+mtext(text = "Total information", col = "grey", cex = .8, side = 3, line = 1, font = 1.5)
+# CASE 3 : legend
+par(mar=c(0,0,0,0))
+plot(x = 0, y = 0, col="white", type="p", bty="n", axes = FALSE,
+     xlab="",ylab="",xlim=c(0,1),ylim=c(0,1))
+legend(x = 0, y = 1.1, fill = item_col_d1, border = F, 
+       legend = item_lab_d1,  ncol = 1, bty = "n", cex = .8, y.intersp=1.3, x.intersp=0.5)
+
+## dimension 2
+# CASE 1 : info percent
+par(mar=c(0.5,0.75,4,4.5)) 
+barplot(height = fisher2$percent_info[ni2:1,], col = item_col_d2, border = TRUE,
+        xlab = "", axes = FALSE, axisnames = FALSE, space = spc)
+axis(4,line=0.5,las=1,lwd=2, labels = c("0%","25%","50%","75%","100%"),
+     at=c(0,25,50,75,100),cex.axis=1,font=2)
+mtext(text = as.roman(1:(length(proj2)+1)), cex = 1, side = 3, line = 0, font = 2,
+      at = .5+((1:(length(proj2)+1))-1)+spc*(1:(length(proj2)+1)))
+mtext(text = "Percentage of information", cex = 1, side = 3, line = 1.35, font = 1.5)
+par(xpd=TRUE)
+text(y = 100 + 35, x = 0.25, 
+     labels = "Dimension 2", cex = 1.25, col = "red", adj = 0, font = 2)
+# CASE 2 : cumulated info percent
+par(mar=c(0.5,1.5,2.2,4)) 
+barplot(height = colSums(fisher2$raw_info), col = "grey", border = F,
+        xlab = "", axes = FALSE, axisnames = FALSE, space = 0.2)
+axis(4,line=0.5,las=1,lwd=1,labels = c(0.0,"",round(max(colSums(fisher2$raw_info)),1)),
+     at=c(0,max(colSums(fisher2$raw_info))/2,max(colSums(fisher2$raw_info))),
+     cex.axis=.8,font=1,col="grey",col.axis="grey")
+mtext(text = as.roman(1:(length(proj2)+1)), cex = .8, side = 3, line = 0, font = 1, 
+      col = "grey", at = .5+((1:(length(proj2)+1))-1)+.2*(1:(length(proj2)+1)))
+mtext(text = "Total information", col = "grey", cex = .8, side = 3, line = 1, font = 1.5)
+# CASE 3 : legend
+par(mar=c(0,0,0,0))
+plot(x = 0, y = 0, col="white", type="p", bty="n", axes = FALSE,
+     xlab="",ylab="",xlim=c(0,1),ylim=c(0,1))
+legend(x = 0, y = 1.1, fill = item_col_d2, border = F, 
+       legend = item_lab_d2,  ncol = 1, bty = "n", cex = .8, y.intersp=1.3, x.intersp=0.5)
+```
+
+
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+<!----------------------------------------------------------------------------->
+
+**References**
+
+[1] Reeve, B. B., Hays, R. D., Bjorner, J. B., Cook, K. F., Crane, P. K., Teresi, J. A., et al. (2007) Psychometric evaluation and calibration of health-related quality of life item banks: plans for the Patient-Reported Outcomes Measurement Information System (PROMIS). Medical Care, 45:S22–31.
+
+[2] Saulnier, T., Philipps, V., Meissner, W. G., Rascol, O., Pavy-Le Traon, A., Foubert-Samier, A., and Proust-Lima, C. (2022). Joint models for the longitudinal analysis of measurement scales in the presence of informative
+dropout. Methods, 203:142–151.

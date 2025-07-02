@@ -10,6 +10,8 @@ Description: Estimation of extended joint models with shared random effects. Lon
 License: GPL (>= 2.0)
 Depends: R (>= 2.14.0), lcmm
 Imports: survival (>= 2.37-2), spacefillr, stringr, marqLevAlg (>= 2.0.6)
+Suggests: knitr, rmarkdown
 BugReports: https://github.com/VivianePhilipps/JLPM/issues
 LazyLoad: yes
+VignetteBuilder: knitr
 RoxygenNote: 7.2.3
