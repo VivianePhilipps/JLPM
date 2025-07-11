@@ -511,7 +511,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
 
   ! vraisemblance (=0) ou temps de sejour (=1)
   expectancy = expectancy0
-  
+
   ! calcul de la vraisemblance
   loglik_res = vrais(b0,npm0)
 
@@ -1037,11 +1037,11 @@ double precision function vrais_i(b,npm,i)
      mu = matmul(X00,b0)+matmul(X01,b01)+matmul(Z,ui)
 
      if(ncor.gt.0) mu = mu+wi
-     !if(i.lt.4) then
+     !if(i.lt.2) then
      !print*,"i=",i," nmes=",nmes(i,1)," nmescur=",nmescur
      !print*,"Xb=",matmul(X00,b0)+matmul(X01,b01)
      !print*,"mu=",mu
-     !print*,"ui=",ui, " wi=",wi," xb=",matmul(X00,b0)+matmul(X01,b01)
+     !print*,"ui=",ui, " wi=",wi," b0=",b0, "X00=",X00, "Z=",Z
      !end if
      sumMesYk=0
      sumntr=0
@@ -1095,30 +1095,38 @@ double precision function vrais_i(b,npm,i)
                     end if
                  end do
               end if
-              !if(i.lt.4)print*,"y=",Y1(sumMesYk+j)," indiceY=",indiceY(nmescur+sumMesYk+j), " Y=",Y(nmescur+sumMesYk+j)," mu=",mu(sumMesYk+j)
-              !print*," binf=",binf," bsup=",bsup
+              !if(i.lt.2)print*,"y=",Y1(sumMesYk+j)," indiceY=",indiceY(nmescur+sumMesYk+j),  &
+              !     " Y=",Y(nmescur+sumMesYk+j)," mu=",mu(sumMesYk+j)
+              !if(i.lt.2)print*," binf=",binf," bsup=",bsup
+              !if(i.lt.2)print*,"se=",abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+yk))
+              !if(i.lt.2)print*,nrisqtot, nvarxevt, nasso, nef, ncontr, nvc, ncor, ntrtot, nalea, yk
               !! centrer et standardiser
               binf = (binf - mu(sumMesYk+j))/abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+yk))
               bsup = (bsup - mu(sumMesYk+j))/abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+yk))
 
-              !if(i.lt.4) print*,"j=",j," nvalORD=",nvalORD(ykord)," binf=",binf," bsup=",bsup
+              !if(i.lt.2) print*,"yk=",yk,"j=",j," nvalORD=",nvalORD(ykord)
+              
+              !if(i.lt.2) print*,"indice = ", indiceY(nmescur+sumMesYk+j)," binf=",binf," bsup=",bsup
               if(indiceY(nmescur+sumMesYk+j).eq.1) then
                  !! si Y=minY
+                 !if(i.lt.2) print*,"min"
                  vrais_Y = vrais_Y * alnorm(binf,.false.)
               else if(indiceY(nmescur+sumMesYk+j).eq.nvalORD(ykord)) then
                  !! si Y=maxY
+                 !if(i.lt.2) print*,"max"
                  if(expectancy.eq.0) then
                     vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
                  end if
               else
                  !! minY < Y < maxY
+                 !if(i.lt.2) print*,"entre min et max"
                  if(expectancy.eq.0) then
                     vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
                  else
                     vrais_Y = vrais_Y * alnorm(bsup,.false.)
                  end if
               end if
-              !if(i.lt.4) print*,"vrais_Y=",vrais_Y
+              !if(i.lt.2) print*,"vrais_Y=",vrais_Y
            end do
 
 
@@ -2182,14 +2190,14 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
   wgk_15(13:14)=wgk(7)
   wgk_15(15)=wgk(8)
 
-  if(expectancy.eq.0) then
+  !if(expectancy.eq.0) then
      hlgth(1)=0.5d+00*Tsurv(i)  !hlgth_event
      if (idtrunc.eq.1) then
         hlgth(2)=0.5d+00*Tsurv0(i)   !hlgth_entry
      end if
-  else
-     hlgth(1) = 0.5d+00 * (Tsurv(i) - Tsurv0(i))
-  end if
+  !else
+  !   hlgth(1) = 0.5d+00 * (Tsurv(i) - Tsurv0(i))
+  !end if
   
   !!! risque de base au tps d event Ti
   risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)

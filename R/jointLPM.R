@@ -1845,7 +1845,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                         nbXpred, Xpred_Ti, Xpred, Xpredcs_Ti, Xpred_cs, nonlin,
                         centerpoly0, expectancy)
         
-        out <- list(conv=2, V=rep(NA, length(b)), best=b, predRE=NA, predRE_Y=NA,
+        out <- list(conv=2, V=rep(NA, length(b)), best=b, b = b, predRE=NA, predRE_Y=NA,
                     Yobs=NA, resid_m=NA, resid_ss=NA, risqcum_est=NA, risq_est=NA,
                     marker=NA, transfY=NA, gconv=rep(NA,3), niter=0, loglik=vrais)
     }

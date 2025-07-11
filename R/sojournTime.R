@@ -150,7 +150,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             Ycond[k] <- condState[[x$Names$Ynames[k]]]
             nmes[k] <- nmes[k] + 1 # a faire : verifier qu'on a une seule valeur par Y
             nmescond[k] <- nmescond[k] + 1
-            nvalSPLORD[k] <- length(x$mod[[k]])
+            #nvalSPLORD[k] <- length(x$mod[[k]])
             indiceYcond[k] <- which(x$mod[[k]] == Ycond[k])
             indic_s1t2[2*(k-1)+1] <- 1
         }
@@ -160,11 +160,12 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             if(idlink[k] != 3) stop("maxState should only include ordinal outcomes")
             Yevent[k] <- maxState[[x$Names$Ynames[k]]]
             nmes[k] <- nmes[k] + 1
-            nvalSPLORD[k] <- length(x$mod[[k]])
+            #nvalSPLORD[k] <- length(x$mod[[k]])
             indiceYevent[k] <- which(x$mod[[k]] == Yevent[k])
             indic_s1t2[2*(k-1)+2] <- 2
         }
 
+        if(idlink[k]==3) nvalSPLORD[k] <- length(x$mod[[k]])
         if(idlink[k]==3) uniqueY <- c(uniqueY,x$mod[[k]])
         if(idlink[k]==2) uniqueY <- c(uniqueY,x$linknodes[1,k])
         
@@ -253,17 +254,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         typrisq,nz,zi,nbevt,idtrunc,logspecif,
                         ny,nv,nobs,nea,nmes,idiag,ncor,nalea,
                         epsY,idlink,nbzitr,zitr,uniqueY,indiceY,
-                        nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npm,b,nfix,bfix)
+                        nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npm,b,nfix,bfix,computeSurv)
     {
-        ## if(s>0)
-        ## {
-        ##     time <- unlist(lapply(as.vector(nmes),function(x) rep(c(s,t),length.out=x))) # suppose que si on a une seule mesure d'un Y, c'est au temps s
-        ## }
-        ## else
-        ## {
-        ##     time <- rep(t, sum(nmes))
-        ## }
-
         ## to compute P(Y(t)=0, Y(s) = 0):
         time <- ifelse(indic_s1t2==1, s, t)
         ##cat("time=", time, "\n")
@@ -285,7 +277,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 
         ## to compute P(T > t):
         Tevt <- t
-        Tentr <- s # only used for GK weights in fct_risq_irtsre_2
         ind_survint <- 0
         if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
 
@@ -303,7 +294,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             ptGK_8 <- 0.000000000000000000000000000000000
 
             ptsGK <- c(ptGK_1,-ptGK_1,ptGK_2,-ptGK_2,ptGK_3,-ptGK_3,ptGK_4,-ptGK_4,ptGK_5,-ptGK_5,ptGK_6,-ptGK_6,ptGK_7,-ptGK_7,ptGK_8) # integration [-1, 1]
-            ptsGK <- (s + t) / 2 + ((t - s) / 2) * ptsGK # integration on [s, t]
+            ptsGK <- t / 2 + t / 2 * ptsGK #(s + t) / 2 + ((t - s) / 2) * ptsGK # integration on [s, t]
 
             colX <- setdiff(colnames(newdata), "t")
             if(length(colX))
@@ -340,6 +331,21 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 
         expectancy <- 1
         proba <- 0
+
+        if(computeSurv == 0)
+        {
+            nbevt <- 0
+            
+            btot <- rep(NA, length(fix))
+            btot[which(fix == 0)] <- b
+            btot[which(fix == 1)] <- bfix
+
+            bsansSurv <- btot[-c(1:sum(x$N[1:4]))]
+            fixsansSurv <- fix[-c(1:sum(x$N[1:4]))]
+            
+            b <- bsansSurv[which(fixsansSurv == 0)]
+            bfix <- bsansSurv[which(fixsansSurv == 1)]
+        }
 
         ## compute P(T > t, Y(t) = 0, Y(s) = 0):
         res <- .Fortran(C_loglik,
@@ -424,18 +430,23 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                           uniqueY=uniqueY,indiceY=indiceY,
                           nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
                           dimMC=dimMC,seqMC=seqMC,npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix,
+                          computeSurv= 1,
                           rel.tol=rel.tol, subdivisions=subdivisions))
 
         if(class(res1)=="try-error") print(bdraw)
         
         result <- res1$value
-  
-        if((startTime > 0) & (length(na.omit(Ycond))))
+
+        
+        if((startTime > 0) | length(na.omit(Ycond)))
         {
             nobscond <- length(na.omit(Ycond))
             Ycond <- na.omit(Ycond)
             indiceYcond <- na.omit(indiceYcond)
-
+            
+            computeSurv <- 0
+            if(startTime > 0) computeSurv <- 1
+            
             ## compute P(Y(s) = 0, T > s):
             res2 <- fctprob(t=startTime, s=0, x=x, newdata=newdata1, Y=Ycond,
                             fixed=fixed, random=random, contr=contr, surv=surv,
@@ -451,14 +462,14 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                             indiceY=indiceYcond,
                             nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
                             dimMC=dimMC,seqMC=seqMC,
-                            npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix)
-            
+                            npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix, computeSurv=computeSurv)
+
             result <- result/res2            
         }
  
         return(result)
     }
-
+##browser()
     
     if(!isTRUE(draws))
     {
