@@ -31,7 +31,7 @@
 #' \code{jointLPM} function estimates one measurement model per outcome to link
 #' each outcome Y_k(t) with the underlying latent common factor L(t) they measure.
 #' To fix the latent process dimension, we chose to constrain the latent 
-#' process dimensino with the intercept of the mixed model fixed at 0 and the 
+#' process dimension with the intercept of the mixed model fixed at 0 and the 
 #' standard error of the first random effect fixed at 1. The nature of each 
 #' measurement
 #' model adapts to the type of the outcome it models. 
@@ -1205,14 +1205,14 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         nom.var <- nom.var[!str_detect(nom.var,var.time)] # nom.var[!(nom.var == var.time)] # noms des variables, autre que celle incluant var.time
         if(length(nom.var)>0){
           for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
-            tmp <- unique(na.omit(data[,c(subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
+            tmp <- unique(na.omit(data[which(data[, nom.subject] %in% IND), c(nom.subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
             if(nrow(tmp) != length(unique(IND))) #var v dependante du temps
               stop(paste(nom.var[v]," variable seems to be time dependant, can't use sharedtype 'CL' or 'CS' due to impossibility to predict"))
           }  
         }
         
         ## matrices design
-        
+        if(FALSE){
         # database contenant les variables des EFs et des EAs, 1 ligne par sujet
         data_tmp <- as.data.frame(unique(na.omit(data[,c(subject,nom.var)])))
         colnames(data_tmp) <- c(subject,nom.var)
@@ -1279,11 +1279,12 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         }
         
           nbXpred <- c(nbXpred, ncol(Xpred))
-
+        }
 
           ## Viviane : remplace ce qui precede
-          data_tmp <- as.data.frame(unique(na.omit(data[,c(subject,nom.var)])))
-          colnames(data_tmp) <- c(subject,nom.var)
+          data_tmp <- as.data.frame(unique(na.omit(data[which(data[, nom.subject] %in% IND), c(nom.subject, nom.var)])))
+          colnames(data_tmp) <- c(nom.subject,nom.var)
+          data_tmp <- data_tmp[order(data_tmp[, nom.subject]), , drop = FALSE]
 
           deriv <- ifelse(length(grep("CS", sharedtype)) > 0, TRUE, FALSE)
           X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, idtrunc, tsurv0, tsurv, deriv)
@@ -1402,17 +1403,17 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     {        
         if(sharedtype[ke] == "RE")
             nasso <- nasso + nea
-        else if(sharedtype %in% c("REpoly", "RElogit"))
+        else if(sharedtype[ke] %in% c("REpoly", "RElogit"))
             nasso <- nasso + 3 * nea
-        else if(sharedtype %in% c("CL", "CS"))
+        else if(sharedtype[ke] %in% c("CL", "CS"))
             nasso <- nasso + 1
-        else if(sharedtype %in% c("CLpoly", "CLlogit", "CSpoly", "CSlogit"))
+        else if(sharedtype[ke] %in% c("CLpoly", "CLlogit", "CSpoly", "CSlogit"))
             nasso <- nasso + 3
-        else if(sharedtype %in% c("CL+CS"))
+        else if(sharedtype[ke] %in% c("CL+CS"))
             nasso <- nasso + 2
-        else if(sharedtype %in% c("CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit"))
+        else if(sharedtype[ke] %in% c("CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit"))
             nasso <- nasso + 4
-        else if(sharedtype %in% c("CLpoly+CSpoly", "CLlogit+CSpoly", "CLpoly+CSlogit", "CLlogit+CSlogit"))
+        else if(sharedtype[ke] %in% c("CLpoly+CSpoly", "CLlogit+CSpoly", "CLpoly+CSlogit", "CLlogit+CSlogit"))
             nasso <- nasso + 6
     }
         
