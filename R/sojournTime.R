@@ -110,10 +110,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
     if(!(var.time %in% x$Names$Xvar)) stop("var.time does not appear in the model")
     if(missing(newdata) & length(setdiff(x$Names$Xvar,var.time))) stop("argument 
                                                             newdata is missing")
-    if(!all(setdiff(x$Names$Xvar,var.time) %in% 
-            colnames(newdata))) stop(paste("newdata should include variables",
-                                           paste(setdiff(x$Names$Xvar, var.time),
-                                                 collapse=" ")))
+
 
     if((x$conv != 1) & (draws != FALSE))
     {
@@ -121,13 +118,24 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         warning("No confidence interval will be computed since the model did 
                 not converge correctly.")
     }
-    
-    if(any(x$idtdv==1))
+
+    if(length(setdiff(x$Names$Xvar,var.time)))
     {
-        if(is.na(newdata[,x$Names$TimeDepVar.name])) newdata[,x$Names$TimeDepVar.name] <- Inf
+        if(!all(setdiff(x$Names$Xvar,var.time) %in% 
+                colnames(newdata))) stop(paste("newdata should include variables",
+                                               paste(setdiff(x$Names$Xvar, var.time),
+                                                     collapse=" ")))
+        if(any(x$idtdv==1))
+        {
+            if(is.na(newdata[,x$Names$TimeDepVar.name])) newdata[,x$Names$TimeDepVar.name] <- Inf
+        }
+        
+        newdata1 <- na.omit(newdata[1,setdiff(x$Names$Xvar,c(var.time)),drop=FALSE])
     }
-    
-    newdata1 <- na.omit(newdata[1,setdiff(x$Names$Xvar,c(var.time)),drop=FALSE])
+    else
+    {
+        newdata1 <- data.frame(fakeCovariateX = 0)
+    }
 
 
     ny <- x$N[12]
