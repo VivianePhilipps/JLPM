@@ -616,7 +616,7 @@ double precision function vrais_i(b,npm,i)
   double precision,dimension(maxmes*(maxmes+1)/2) ::Vi
   double precision,dimension(nv) :: b0
   double precision,dimension(npmtot)::b1
-  double precision,dimension(nxevt)::Xevt,bevt
+  double precision,dimension(nxevt*nbevt)::Xevt,bevt
   double precision,dimension(nbevt)::bevtint
   double precision,dimension(maxval(nprisq))::brisq
   double precision,dimension(3)::bassoCL
