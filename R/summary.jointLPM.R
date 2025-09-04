@@ -178,9 +178,9 @@ summary.jointLPM <- function(object,...)
       pwaldch <- rep(NA,length(coef))
     }
     
-    if(ncor>0) coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor] <- abs(coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor])
-    coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <- abs(coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny])
-    if(nalea>0) coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor+ntrtot+1:ny] <- abs(coef[nrisqtot+nvarxevt+nef+ncontr+nvc+ncor+ntrtot+1:ny])
+    if(ncor>0) coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor] <- abs(coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor])
+    coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny] <- abs(coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+1:ny])
+    if(nalea>0) coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:ny] <- abs(coef[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+1:ny])
     
     if(x$conv!=2)
     {

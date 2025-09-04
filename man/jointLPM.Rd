@@ -287,7 +287,7 @@ A. THE MEASUREMENT MODELS
 \code{jointLPM} function estimates one measurement model per outcome to link
 each outcome Y_k(t) with the underlying latent common factor L(t) they measure.
 To fix the latent process dimension, we chose to constrain the latent 
-process dimensino with the intercept of the mixed model fixed at 0 and the 
+process dimension with the intercept of the mixed model fixed at 0 and the 
 standard error of the first random effect fixed at 1. The nature of each 
 measurement
 model adapts to the type of the outcome it models. 

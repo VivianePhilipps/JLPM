@@ -2,6 +2,7 @@
 % Please edit documentation in R/JLPM-package.R
 \docType{package}
 \name{JLPM-package}
+\alias{JLPM}
 \alias{JLPM-package}
 \title{Estimation of joint latent process models}
 \description{
@@ -23,6 +24,13 @@ of informative dropout, Methods; 203:142-51.
 Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021).
 Robust and efficient optimization using a Marquardt-Levenberg algorithm with 
 R package marqLevAlg, The R Journal 13:2.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item Report bugs at \url{https://github.com/VivianePhilipps/JLPM/issues}
+}
+
 }
 \author{
 Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
