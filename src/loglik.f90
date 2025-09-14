@@ -927,8 +927,10 @@ double precision function vrais_i(b,npm,i)
            if (yk<ny) THEN
               b01((m-1)*ny+yk)=b1(nrisqtot+nvarxevt+nasso+nef+(m-1)*(ny-1)+yk)
            else
-              b01((m-1)*ny+ny) =-sum(b1(nrisqtot+nvarxevt+nasso+nef+(m-1)*(ny-1)+1 &
-                   :nef+(m-1)*(ny-1)+ny-1))
+              b01((m-1)*ny+ny) =-sum(b1((nrisqtot+nvarxevt+nasso+nef+(m-1)*(ny-1)+1) &
+                    :(nrisqtot+nvarxevt+nasso+nef+(m-1)*(ny-1)+(ny-1))))
+                   !-sum(b1(nrisqtot+nvarxevt+nasso+nef+(m-1)*(ny-1)+1 &
+                   !:nef+(m-1)*(ny-1)+ny-1))
            end if
         end do
      end if
