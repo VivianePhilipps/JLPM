@@ -223,7 +223,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   end if
   
   allocate(Xcl_Ti(ns0,nXcl0(1)),Xcl_GK(15*ns0,nXcl0(1)),Xcl0_GK(15*ns0,nXcl0(1)))
-  allocate(Xcs_Ti(ns0,nXcl0(1)),Xcs_GK(15*ns0,nXcl0(1)),Xcs0_GK(15*ns0,nXcl0(1)))
+  allocate(Xcs_Ti(ns0,nXcl0(1)-1),Xcs_GK(15*ns0,nXcl0(1)-1),Xcs0_GK(15*ns0,nXcl0(1)-1))
 
   eps=1.d-20
 
@@ -276,9 +276,9 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ! var expl aux 15 points de quadrature pour pente courante
      if(idst(ke).eq.3 .or. idst(ke).eq.4) then
         Xcs_Ti=Xcs_Ti0
-        Xcs_GK=Xcs_GK0(:,1:nXcl(1))
+        Xcs_GK=Xcs_GK0(:,1:(nXcl(1)-1))
         if (idtrunc.eq.1) then
-           Xcs0_GK=Xcs_GK0(:,(nXcl(1)+1):nXcl(2))
+           Xcs0_GK=Xcs_GK0(:,nXcl(1):(nXcl(2)-2))
         end if
      end if
      
