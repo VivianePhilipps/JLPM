@@ -2092,7 +2092,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     Names <- list(Xnames=nom.X0,Ynames=nomsY,
                   ID=nom.subject,Tnames=noms.surv,
                   TimeDepVar.name=nom.timedepvar,
-                  Xvar=setdiff(ttesLesVar,noms.surv))
+                  Xvar=ttesLesVar)
     
     names(modalites) <- nomsY
     
