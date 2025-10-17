@@ -1,4 +1,4 @@
-matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T, deriv = FALSE)
+matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T, deriv = FALSE, start)
 {
     ## ajouter variable temps aux donnees
     data$tmp_name <- NA
@@ -59,7 +59,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
     data <- data[rep(1:nrow(data), each = 15), ] 
 
     ## matrices pour survie 0->T
-    data[, var.time] <- data$T / 2 + data$T / 2 * ptsGK # integration [0, T]
+    data[, var.time] <- (data$T + start) / 2 + (data$T - start) / 2 * ptsGK # integration [start, T]
     mat_ef <- model.matrix(fixed, data = data)
     mat_ef <- as.data.frame(mat_ef[,-1])
     mat_ea <- NULL
@@ -70,7 +70,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
     if(idtrunc)
     {
         ## matrices pour survie 0->T0
-        data[, var.time] <- data$T0 / 2 + data$T0 / 2 * ptsGK # integration [0, T0]
+        data[, var.time] <- (data$T0 + start) / 2 + (data$T0 - start) / 2 * ptsGK # integration [start, T0]
         mat_ef <- model.matrix(fixed, data = data)
         mat_ef <- as.data.frame(mat_ef[, -1])
         mat_ea <- NULL
@@ -84,7 +84,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
     if(deriv)
     {
         data[, var.time] <- rep(T, each = 15)
-        data[, var.time] <- data$T / 2 + data$T / 2 * ptsGK
+        data[, var.time] <- (data$T + start) / 2 + (data$T - start) / 2 * ptsGK
         
         h <- sapply(data[, var.time], function(x) { max(1E-7, 1E-4 * abs(x)) })
 
@@ -115,7 +115,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         if(idtrunc)
         {
             data[, var.time] <- rep(T0, each = 15)
-            data[, var.time] <- data$T0 / 2 + data$T0 / 2 * ptsGK
+            data[, var.time] <- (data$T0 + start) / 2 + (data$T0 - start) / 2 * ptsGK
             
             h <- sapply(data[, var.time], function(x) { max(1E-7, 1E-4 * abs(x)) })
             

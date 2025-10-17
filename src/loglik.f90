@@ -284,7 +284,6 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      
   end do
   
-  
   !     if (verbose==1) write(*,*)'ntotvalSPL',ntotvalSPL
 
   if (ntotvalSPL+ntotvalORD.gt.0) uniqueY(1:ntotvalSPL+ntotvalORD)=uniqueY0(1:ntotvalSPL+ntotvalORD)
@@ -1392,8 +1391,8 @@ double precision function vrais_i(b,npm,i)
 
         ! vraisemblance de la partie survie
         vrais_surv = exp(-Surv_glob)
-
- ! print*,"vrais_surv ok"        
+        ! print*,"vrais_surv ok"
+       
         if(Devt(i).gt.0) vrais_surv = vrais_surv * fevt
 
         if (idtrunc.eq.1) then
@@ -1417,7 +1416,7 @@ double precision function vrais_i(b,npm,i)
   end do ! fin boucle nMC
   
   vrais_i = vrais_i + log(som) - log(dble(nMC)) + jacobien
-  
+
   if (idtrunc.eq.1) then    !delayedentry
       vrais_i = vrais_i - log(som_T0) + log(dble(nMC))
   end if  
@@ -1576,7 +1575,6 @@ subroutine splines_irtsre(k)
   zi(nz(k)+2,k)=zi(nz(k),k)
   zi(nz(k)+3,k)=zi(nz(k),k)
   
-
   n=nz(k)+2
   !------------------- Tsurv ---------------------------
   Do i=1,ns
@@ -2058,7 +2056,6 @@ subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
           +brisq(ll+2)*Tim1(ns*(k-1)+i)+brisq(ll+3)*Tim(ns*(k-1)+i)
      risq(k)=brisq(ll)*Tmm3(ns*(k-1)+i)+brisq(ll+1)*Tmm2(ns*(k-1)+i)     &
           +brisq(ll+2)*Tmm1(ns*(k-1)+i)+brisq(ll+3)*Tmm(ns*(k-1)+i)
-     
 
      !------------ survie et risq pour Tsurv0 ----------------
      
@@ -2129,7 +2126,6 @@ subroutine fct_risq_irtsre(i,k,brisq,risq,surv,surv0,survint)
      
   end if
   
-  
 end subroutine fct_risq_irtsre
 
 
@@ -2192,14 +2188,10 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
   wgk_15(13:14)=wgk(7)
   wgk_15(15)=wgk(8)
 
-  !if(expectancy.eq.0) then
-     hlgth(1)=0.5d+00*Tsurv(i)  !hlgth_event
-     if (idtrunc.eq.1) then
-        hlgth(2)=0.5d+00*Tsurv0(i)   !hlgth_entry
-     end if
-  !else
-  !   hlgth(1) = 0.5d+00 * (Tsurv(i) - Tsurv0(i))
-  !end if
+  hlgth(1)=0.5d+00 * (Tsurv(i) - zi(1,1))  !hlgth_event
+  if (idtrunc.eq.1) then
+     hlgth(2)=0.5d+00 * (Tsurv0(i) - zi(1,1))   !hlgth_entry
+  end if
   
   !!! risque de base au tps d event Ti
   risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)
@@ -2245,7 +2237,6 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
      if (idtrunc.eq.1) then
         pred_GK_entry = pred_GK(2,:)
      end if
- 
      !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
      if(nonlinCL(k).eq.0) then
         pred_GK_event = pred_GK_event*bassoCL(1)
@@ -2331,7 +2322,6 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
      end if
   end if
 
-
   !ponderation
   fct_pred_surv_pond = 0.d0
   fct_pred_surv0_pond = 0.d0
@@ -2341,7 +2331,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
       fct_pred_surv0_pond(p) = wgk_15(p) * fct_pred_surv0(p)
     end if
   end do
-  
+
   !somme
   surv(k) = SUM(fct_pred_surv_pond)
   if (idtrunc.eq.1) then
@@ -2355,7 +2345,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
   else
     surv0(k) = 0
   end if
-  
+
 end subroutine fct_risq_irtsre_2
 
 
@@ -2427,7 +2417,6 @@ double precision function fct_risq_base_irtsre_2(t,i,k,brisq,arg,p)  !t time, i 
             +brisq(ll+2)*Tmm01_st2(p,ns*(k-1)+i)+brisq(ll+3)*Tmm0_st2(p,ns*(k-1)+i)
         end if
      end if
-     
   end if
   
   
@@ -2475,7 +2464,7 @@ subroutine fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)
     do ll=1,id_nXcl(2)
       pred_GK(1,p) = pred_GK(1,p) + Xcl_GK((i-1)*15+p,1+nef+ll) * ui(ll)    !ui=vect de taille nea
       if (idtrunc.eq.1) then
-        pred_GK(2,p) = pred_GK(2,p) + Xcl0_GK((i-1)*15+p,1+nef+ll)* ui(ll)
+         pred_GK(2,p) = pred_GK(2,p) + Xcl0_GK((i-1)*15+p,1+nef+ll)* ui(ll)
       end if
     end do
   end do

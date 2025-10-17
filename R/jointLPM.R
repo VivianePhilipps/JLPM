@@ -675,6 +675,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     varSurv <- unique(all.vars(terms(survival)))
     if(!is.null(nom.timedepvar)){if(!(nom.timedepvar %in% all.vars(terms(survival)))) stop("Variable in 'TimeDepVar' should also appear as a covariate in the 'survival' argument")}  
     if(!all(varSurv %in% colnames(data))) stop(paste("Data should contain the variables",paste(varSurv,collapse=" ")))
+    varSurv <- setdiff(varSurv, noms.surv)
     ttesLesVar <- unique(c(ttesLesVar,varSurv))
     
     
@@ -1181,7 +1182,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
           }
         }
       }
-      
+
+        if((length(unique(zi[1,])) > 1) & any(sharedtype %in% shtypes[-c(1:3)])) stop("All the hazards don't start from the same value. Check hazardrange and startWeibull.")
       
         ## non linear associations
         nonlin <- rep(0, 3 * nbevt)
@@ -1287,7 +1289,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
           data_tmp <- data_tmp[order(data_tmp[, nom.subject]), , drop = FALSE]
 
           deriv <- ifelse(length(grep("CS", sharedtype)) > 0, TRUE, FALSE)
-          X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, idtrunc, tsurv0, tsurv, deriv)
+          X_GK <- matrixGK(data_tmp, fixed2[-2], random, var.time, idtrunc, tsurv0, tsurv, deriv, zi[1,1])
                                         # a controler : tsurv0=NULL si pas idtrunc ??
           Xpred_Ti <- X_GK$Xpred_Ti     # X(t) pour calculer lambda(Ti)
           Xpred <- X_GK$Xpred_cl        # X(t) pour calculer S(Ti)
