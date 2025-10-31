@@ -2279,7 +2279,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
      if (idtrunc.eq.1) then
         pred_GK_entry = pred_GK(2,:)
      end if
-     
+      
      !multiplication par prm estime et passage a l'exponentiel a chq pnt de quadrature
      if(nonlinCS(k).eq.0) then
         pred_GK_event = pred_GK_event*bassoCS(1)
@@ -2322,6 +2322,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
      end if
   end if
 
+  
   !ponderation
   fct_pred_surv_pond = 0.d0
   fct_pred_surv0_pond = 0.d0
@@ -2493,7 +2494,7 @@ subroutine fct_pred_curslope_irtsre_2(i, beta_ef, ui, pred_GK)
   ! X'(t) %*% beta : necessite X au tps de quadrature t
   do p=1,15
     do ll=1,id_nXcl(1)
-      pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,ll) * beta_ef(ll)
+       pred_GK(1,p) = pred_GK(1,p) + Xcs_GK((i-1)*15+p,ll) * beta_ef(ll)
       !intercept pas estime
       if (idtrunc.eq.1) then
         pred_GK(2,p) = pred_GK(2,p) + Xcs0_GK((i-1)*15+p,ll) * beta_ef(ll)
@@ -2552,8 +2553,9 @@ double precision function curslope(i, beta, ui)
   double precision, dimension(nef) :: beta
   double precision, dimension(nea) :: ui
 
+  curslope = 0.d0
   do j = 1, id_nXcl(1) ! id_nXcl(1) = nef
-     curslope = Xcs_Ti(i, j) * beta(j)
+     curslope = curslope + Xcs_Ti(i, j) * beta(j)
   end do
   
   do j = 1, id_nXcl(2) ! id_nXcl(2) = nea
