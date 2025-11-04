@@ -25,8 +25,8 @@
 #' an impairment of Y lower or equal to 3.
 #' @param condState an optional list specifying the initial state at start time 
 #' (argument \code{startTime}) from which to compute the residual sojourn time.
-#' @param newdata a data frame specifying the covariate profile for which 
-#' the sojourn time is computed.
+#' @param newdata a one line data frame specifying the covariate profile for
+#' which the sojourn time is computed.
 #' @param var.time a character string specifying the name of the time variable 
 #' in the longitudinal submodel. Note that this time covariate should not be 
 #' included in newdata.
@@ -102,15 +102,11 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 {
     if(missing(x)) stop("the model (argument x) is missing")
     if(!inherits(x,"jointLPM")) stop("use only with jointLPM model")
- #   if(x$call$sharedtype == 'CL') stop("Not implemented yet with current level 
- #                                      (sharedtype = 'CL')")
     if(missing(maxState)) stop("argument maxState is missing")
-#    if(!missing(condState) & (start==0)) stop("argument condState should only be used with start > 0")
     if(missing(var.time)) stop("argument var.time is missing")
     if(!(var.time %in% x$Names$Xvar)) stop("var.time does not appear in the model")
-    if(missing(newdata) & length(setdiff(x$Names$Xvar,var.time))) stop("argument 
-                                                            newdata is missing")
-
+    if(missing(newdata) & length(setdiff(x$Names$Xvar,var.time))) stop("argument newdata is missing")
+    if(nrow(newdata) > 1) stop("newdata should only contain one line")
 
     if((x$conv != 1) & (draws != FALSE))
     {
@@ -158,7 +154,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             Ycond[k] <- condState[[x$Names$Ynames[k]]]
             nmes[k] <- nmes[k] + 1 # a faire : verifier qu'on a une seule valeur par Y
             nmescond[k] <- nmescond[k] + 1
-            #nvalSPLORD[k] <- length(x$mod[[k]])
             indiceYcond[k] <- which(x$mod[[k]] == Ycond[k])
             indic_s1t2[2*(k-1)+1] <- 1
         }
@@ -168,7 +163,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             if(idlink[k] != 3) stop("maxState should only include ordinal outcomes")
             Yevent[k] <- maxState[[x$Names$Ynames[k]]]
             nmes[k] <- nmes[k] + 1
-            #nvalSPLORD[k] <- length(x$mod[[k]])
             indiceYevent[k] <- which(x$mod[[k]] == Yevent[k])
             indic_s1t2[2*(k-1)+2] <- 2
         }
@@ -264,11 +258,40 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         epsY,idlink,nbzitr,zitr,uniqueY,indiceY,
                         nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npm,b,nfix,bfix,computeSurv)
     {
+        ## The function computes P(T > t, Y(t) = 0, Y(s) = 0) ##
+        
+        ## to compute P(T > t):
+        Tevt <- t
+        ind_survint <- 0
+        if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
+
+        ## for sharedtype = "CL"
+        if(any(sharedtype > 1))
+        {
+            deriv <- FALSE
+            if(any(sharedtype %in% c(3, 4))) deriv <- TRUE
+            X_GK <- matrixGK(newdata, fixed, random, "t", idtrunc, 0, t, deriv, zi[1,1])
+            Xcl_GK <- X_GK$Xpred_cl
+            Xcl_Ti <- 0 # don't need to compute instantaneous hazard
+            nXcl <- c(ncol(Xcl_GK), ncol(Xcl_GK))
+            Xcs_Ti <- 0
+            Xcs_GK <- 0
+            if(any(sharedtype %in% c(3, 4))) Xcs_GK <- X_GK$Xpred_cs
+        }
+        else # sharedtype ="RE"
+        {
+            nXcl <- c(0, 0)
+            Xcl_Ti <- 0
+            Xcl_GK <- 0
+            Xcs_Ti <- 0
+            Xcs_GK <- 0
+        }
+        
         ## to compute P(Y(t)=0, Y(s) = 0):
         time <- ifelse(indic_s1t2==1, s, t)
         ##cat("time=", time, "\n")
         newdata <- data.frame(newdata, t=time, row.names=NULL)
-        
+                
         Xfixed <- model.matrix(fixed, data=newdata)
         Xrandom <- model.matrix(random, data=newdata)
         Xcontr <- model.matrix(contr,data=newdata)
@@ -283,62 +306,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         Xnames <- gsub(paste("\\b",var.time,"\\b",sep=""),"t",Xnames)
         X0 <- X0[,Xnames,drop=FALSE]
 
-        ## to compute P(T > t):
-        Tevt <- t
-        ind_survint <- 0
-        if(any(idtdv==1)) ind_survint <- as.numeric(newdata[1,x$Names$TimeDepVar.name] < t)
-
-        ## for sharedtype = "CL"
-        if(any(sharedtype > 1))
-        {
-            ## noeuds de quadrature Gauss-Kronrod
-            ptGK_1 <- 0.991455371120812639206854697526329
-            ptGK_2 <- 0.949107912342758524526189684047851
-            ptGK_3 <- 0.864864423359769072789712788640926
-            ptGK_4 <- 0.741531185599394439863864773280788
-            ptGK_5 <- 0.586087235467691130294144838258730
-            ptGK_6 <- 0.405845151377397166906606412076961
-            ptGK_7 <- 0.207784955007898467600689403773245
-            ptGK_8 <- 0.000000000000000000000000000000000
-
-            ptsGK <- c(ptGK_1,-ptGK_1,ptGK_2,-ptGK_2,ptGK_3,-ptGK_3,ptGK_4,-ptGK_4,ptGK_5,-ptGK_5,ptGK_6,-ptGK_6,ptGK_7,-ptGK_7,ptGK_8) # integration [-1, 1]
-            ptsGK <- t / 2 + t / 2 * ptsGK #(s + t) / 2 + ((t - s) / 2) * ptsGK # integration on [s, t]
-
-            colX <- setdiff(colnames(newdata), "t")
-            if(length(colX))
-                newdata <- data.frame(t = ptsGK, newdata[1, setdiff(colnames(newdata), "t")])
-            else
-                newdata <- data.frame(t = ptsGK)
-
-            mat_ef <- model.matrix(fixed, data = newdata)
-            mat_ea <- model.matrix(random, data = newdata)
-            Xpredcl <- cbind(newdata$t, mat_ef[, -1], mat_ea)
-            Xcl_GK <- as.matrix(Xpredcl)
-
-            Xcl_Ti <- 0 # don't need to compute instantaneous hazard
-            nXcl <- c(ncol(Xpredcl), ncol(Xpredcl))
-
-            Xcs_Ti <- 0
-            Xcs_GK <- 0
-            if(any(sharedtype %in% c(3, 4))) # slope association
-            {
-                Xcs_GK <- derivMat(fixed, random, newdata, "t")
-                Xcs_Ti <- 0
-            }
-        }
-        else # sharedtype ="RE"
-        {
-            nXcl <- c(0, 0)
-            Xcl_Ti <- 0
-            Xcl_GK <- 0
-            Xcs_Ti <- 0
-            Xcs_GK <- 0
-        }
-        nonlin <- x$nonlin 
-        centerpoly <- x$centerpoly
-
-        expectancy <- 1
-        proba <- 0
 
         if(computeSurv == 0)
         {
@@ -354,8 +321,14 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             b <- bsansSurv[which(fixsansSurv == 0)]
             bfix <- bsansSurv[which(fixsansSurv == 1)]
         }
+        
+        nonlin <- x$nonlin 
+        centerpoly <- x$centerpoly
 
-        ## compute P(T > t, Y(t) = 0, Y(s) = 0):
+        expectancy <- 1
+        proba <- 0
+
+        ## compute log P(T > t, Y(t) = 0, Y(s) = 0):
         res <- .Fortran(C_loglik,
                         as.double(Y),
                         as.double(X0),
@@ -410,7 +383,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         as.integer(expectancy),
                         res=as.double(proba))$res
 
-        if(!is.na(res)){ if(res == -1E-9) res <- NA }
+        if(!is.na(res)){ if(res == -1E+9) res <- NA }
 
         return(exp(res))
     }
@@ -446,17 +419,17 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         result <- res1$value
 
         
-        if((startTime > 0) | length(na.omit(Ycond)))
+        if((startTime > zi[1, 1]) | length(na.omit(Ycond)))
         {
             nobscond <- length(na.omit(Ycond))
             Ycond <- na.omit(Ycond)
             indiceYcond <- na.omit(indiceYcond)
             
             computeSurv <- 0
-            if(startTime > 0) computeSurv <- 1
+            if(startTime > zi[1, 1]) computeSurv <- 1
             
             ## compute P(Y(s) = 0, T > s):
-            res2 <- fctprob(t=startTime, s=0, x=x, newdata=newdata1, Y=Ycond,
+            res2 <- fctprob(t=startTime, s=startTime, x=x, newdata=newdata1, Y=Ycond,
                             fixed=fixed, random=random, contr=contr, surv=surv,
                             survcause=survcause, cor=cor,
                             indic_s1t2=rep(2, nobscond), Tentr=Tentr,Devt=Devt,
