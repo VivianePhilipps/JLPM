@@ -1401,24 +1401,26 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     if((length(sharedtype) > 1) & (length(sharedtype) != nbevt)) stop("sharedtype should be of length 1 or", nbevt, "(number of competing events) \n")
 
     nasso <- 0
-    for(ke in 1:nbevt)
-    {        
+    if((nbevt>0)){
+      for(ke in 1:nbevt)
+      {        
         if(sharedtype[ke] == "RE")
-            nasso <- nasso + nea
+          nasso <- nasso + nea
         else if(sharedtype[ke] %in% c("REpoly", "RElogit"))
-            nasso <- nasso + 3 * nea
+          nasso <- nasso + 3 * nea
         else if(sharedtype[ke] %in% c("CL", "CS"))
-            nasso <- nasso + 1
+          nasso <- nasso + 1
         else if(sharedtype[ke] %in% c("CLpoly", "CLlogit", "CSpoly", "CSlogit"))
-            nasso <- nasso + 3
+          nasso <- nasso + 3
         else if(sharedtype[ke] %in% c("CL+CS"))
-            nasso <- nasso + 2
+          nasso <- nasso + 2
         else if(sharedtype[ke] %in% c("CLpoly+CS", "CLlogit+CS", "CL+CSpoly", "CL+CSlogit"))
-            nasso <- nasso + 4
+          nasso <- nasso + 4
         else if(sharedtype[ke] %in% c("CLpoly+CSpoly", "CLlogit+CSpoly", "CLpoly+CSlogit", "CLlogit+CSlogit"))
-            nasso <- nasso + 6
+          nasso <- nasso + 6
+      }
     }
-        
+   
     
     ## prm partie long
     nef <- sum(idg==1)-1
