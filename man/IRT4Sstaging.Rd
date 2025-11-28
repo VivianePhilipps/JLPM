@@ -21,6 +21,8 @@ the dum of the items}
 }
 \value{
 a vector of the estimated stage transition thresholds
+
+###@examples
 }
 \description{
 This function determines the stage thresholds in the latent scale of the

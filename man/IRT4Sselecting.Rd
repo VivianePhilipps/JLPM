@@ -21,6 +21,8 @@ the dum of the items}
 }
 \value{
 a vector of the estimated stage transition thresholds
+
+###@examples
 }
 \description{
 This function computes the contribution if each item during stages, based on 

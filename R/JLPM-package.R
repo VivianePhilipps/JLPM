@@ -10,7 +10,7 @@
 #' via github only (https://github.com/VivianePhilipps/JLPM/issues).
 #' 
 #' @name JLPM-package
-#' @docType package
+#' @docType _PACKAGE
 #' @author Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
 #' 
 #' @references

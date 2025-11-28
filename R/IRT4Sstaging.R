@@ -18,7 +18,7 @@
 #'
 #' @return a vector of the estimated stage transition thresholds
 #' 
-#' @examples
+#' ###@examples
 #' 
 #' @author Tiphaine Saulnier, Viviane Philipps and Cecile Proust-Lima
 #' 

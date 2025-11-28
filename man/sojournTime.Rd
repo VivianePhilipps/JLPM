@@ -18,7 +18,8 @@ sojournTime(
   draws = FALSE,
   ndraws = 2000,
   returndraws = FALSE,
-  cl = NULL
+  cl = NULL,
+  seed = NULL
 )
 }
 \arguments{
@@ -33,8 +34,8 @@ an impairment of Y lower or equal to 3.}
 \item{condState}{an optional list specifying the initial state at start time 
 (argument \code{startTime}) from which to compute the residual sojourn time.}
 
-\item{newdata}{a data frame specifying the covariate profile for which 
-the sojourn time is computed.}
+\item{newdata}{a one line data frame specifying the covariate profile for
+which the sojourn time is computed.}
 
 \item{var.time}{a character string specifying the name of the time variable 
 in the longitudinal submodel. Note that this time covariate should not be 
@@ -66,6 +67,8 @@ returned. Default to FALSE.}
 \item{cl}{either a cluster created with \code{makeCluster} or an integer 
 specifying the number of cores that should be used for computation. 
 Only used with draws = TRUE.}
+
+\item{seed}{integer only used with \code{draws = TRUE} to set the random seed.}
 }
 \value{
 if \code{draws = FALSE}, returns a single value. 

@@ -48,6 +48,7 @@
 #' @param cl either a cluster created with \code{makeCluster} or an integer 
 #' specifying the number of cores that should be used for computation. 
 #' Only used with draws = TRUE.
+#' @param seed integer only used with \code{draws = TRUE} to set the random seed.
 #'
 #' @return if \code{draws = FALSE}, returns a single value. 
 #' If \code{draws = TRUE} and \code{returndraws = FALSE}, returns the median, 
@@ -98,7 +99,7 @@
 sojournTime <- function(x, maxState, condState=NULL, newdata, var.time, 
                         startTime=0, nMC=1000, upperTime=150, subdivisions=100L, 
                         rel.tol=.Machine$double.eps^0.25, draws=FALSE, 
-                        ndraws=2000, returndraws=FALSE, cl=NULL)
+                        ndraws=2000, returndraws=FALSE, cl=NULL, seed=NULL)
 {
     if(missing(x)) stop("the model (argument x) is missing")
     if(!inherits(x,"jointLPM")) stop("use only with jointLPM model")
@@ -106,7 +107,9 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
     if(missing(var.time)) stop("argument var.time is missing")
     if(!(var.time %in% x$Names$Xvar)) stop("var.time does not appear in the model")
     if(missing(newdata) & length(setdiff(x$Names$Xvar,var.time))) stop("argument newdata is missing")
-    if(nrow(newdata) > 1) stop("newdata should only contain one line")
+    if(startTime < min(x$hazardnodes[1, ])) warning("startTime is outside the hazard range")
+    if(any(x$typrisq != 2) & (upperTime > max(x$hazardnodes, na.rm = TRUE))) warning("upperTime is outside the hazard range")
+    
 
     if((x$conv != 1) & (draws != FALSE))
     {
@@ -125,6 +128,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         {
             if(is.na(newdata[,x$Names$TimeDepVar.name])) newdata[,x$Names$TimeDepVar.name] <- Inf
         }
+
+        if(nrow(newdata) > 1) stop("newdata should only contain one line")
         
         newdata1 <- na.omit(newdata[1,setdiff(x$Names$Xvar,c(var.time)),drop=FALSE])
     }
@@ -456,6 +461,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
     {
         ## compute the result for parameters btot
         result <- doone(bdraw=btot)
+        class(result) <- "sojournTime"
     }
     else
     {
@@ -481,7 +487,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                 Chol <- t(Chol)
             }
         }
-        
+
+        if(!is.null(seed)) set.seed(seed)
         bdraw <- replicate(ndraws, btot + as.vector(Chol %*% rnorm(npmtot))) # ndraws colonnes
 
         ## compute the result for the ndraws sets of parameters
@@ -537,7 +544,12 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             res <- apply(bdraw, 2, doone)
         }
         
-        if(returndraws) return(res)
+        if(returndraws)
+        {
+            class(res) <- c("sojournTime", "draws")
+            if(!is.null(seed)) attr(res, "seed") <- seed
+            return(res)
+        }
 
         ## return the quantiles
         res_50 <- quantile(res, probs=0.5, na.rm=TRUE)
@@ -549,6 +561,8 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         nn <- length(which(is.na(res)))
 
         result <- c(res_50, res_2.5, res_97.5, res_mean, res_sd, nn)
+        if(!is.null(seed)) attr(result, "seed") <- seed  
+        class(result) <- c("sojournTime", "IC")
     }
 
     return(result)
