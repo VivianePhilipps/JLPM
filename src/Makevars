@@ -1,7 +1,7 @@
 PKG_LIBS = $(BLAS_LIBS) $(FLIBS)
 
 CSRC = init.c runiran.c
-FSRC =  compute.f90 loglik.f90
+FSRC =  compute.f90 loglik.f90 reconddensity.f90
 
 # Define order of compilation
 OBJECTS = $(CSRC:.c=.o) $(FSRC:.f90=.o) 
@@ -10,5 +10,6 @@ $(SHLIB): $(OBJECTS)
 
 
 #Setup dependencies for parallel make
+reconddensity.o: compute.o
 loglik.o: compute.o
 compute.o: runiran.o

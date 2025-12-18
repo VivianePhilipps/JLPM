@@ -7,7 +7,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
 
     ## matrices pour risque au temps Ti
     mat_ef <- model.matrix(fixed, data = data)
-    mat_ef <- as.data.frame(mat_ef[, -1])  # sans intercept car non-estime
+    mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])  # sans intercept car non-estime
     mat_ea <- NULL
     if(!is.null(random)) mat_ea <- model.matrix(random, data = data)
     Xpred_Ti <- as.matrix(cbind(data[, var.time], mat_ef, mat_ea))
@@ -21,7 +21,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         dplus <- data
         dplus[, var.time] <- dplus[, var.time] + h
         mat_ef <- model.matrix(fixed, data = dplus)
-        mat_ef <- as.data.frame(mat_ef[, -1])
+        mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
         mat_ea <- NULL
         if(!is.null(random)) mat_ea <- model.matrix(random, data = dplus)
         Xplus <- cbind(mat_ef, mat_ea)
@@ -30,7 +30,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         dmoins <- data
         dmoins[, var.time] <- dmoins[, var.time] - h
         mat_ef <- model.matrix(fixed, data = dmoins)
-        mat_ef <- as.data.frame(mat_ef[, -1])
+        mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
         mat_ea <- NULL
         if(!is.null(random)) mat_ea <- model.matrix(random, data = dmoins)
         Xmoins <- cbind(mat_ef, mat_ea)
@@ -61,7 +61,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
     ## matrices pour survie 0->T
     data[, var.time] <- (data$T + start) / 2 + (data$T - start) / 2 * ptsGK # integration [start, T]
     mat_ef <- model.matrix(fixed, data = data)
-    mat_ef <- as.data.frame(mat_ef[,-1])
+    mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
     mat_ea <- NULL
     if(!is.null(random)) mat_ea <- model.matrix(random, data = data)
     Xpred <- as.matrix(cbind(data[, var.time], mat_ef, mat_ea))
@@ -72,7 +72,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         ## matrices pour survie 0->T0
         data[, var.time] <- (data$T0 + start) / 2 + (data$T0 - start) / 2 * ptsGK # integration [start, T0]
         mat_ef <- model.matrix(fixed, data = data)
-        mat_ef <- as.data.frame(mat_ef[, -1])
+        mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
         mat_ea <- NULL
         if(!is.null(random)) mat_ea <- model.matrix(random, data = data)
         Xpred0 <- as.matrix(cbind(data[, var.time], mat_ef, mat_ea))
@@ -92,7 +92,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         dplus <- data
         dplus[, var.time] <- dplus[, var.time] + h
         mat_ef <- model.matrix(fixed, data = dplus)
-        mat_ef <- as.data.frame(mat_ef[, -1])
+        mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
         mat_ea <- NULL
         if(!is.null(random)) mat_ea <- model.matrix(random, data = dplus)
         Xplus <- cbind(mat_ef, mat_ea)
@@ -101,7 +101,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
         dmoins <- data
         dmoins[, var.time] <- dmoins[, var.time] - h
         mat_ef <- model.matrix(fixed, data = dmoins)
-        mat_ef <- as.data.frame(mat_ef[, -1])
+        mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
         mat_ea <- NULL
         if(!is.null(random)) mat_ea <- model.matrix(random, data = dmoins)
         Xmoins <- cbind(mat_ef, mat_ea)
@@ -123,7 +123,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
             dplus <- data
             dplus[, var.time] <- dplus[, var.time] + h
             mat_ef <- model.matrix(fixed, data = dplus)
-            mat_ef <- as.data.frame(mat_ef[, -1])
+            mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
             mat_ea <- NULL
             if(!is.null(random)) mat_ea <- model.matrix(random, data = dplus)
             Xplus <- cbind(mat_ef, mat_ea)
@@ -132,7 +132,7 @@ matrixGK <- function(data, fixed, random = NULL, var.time, idtrunc, T0 = NULL, T
             dmoins <- data
             dmoins[, var.time] <- dmoins[, var.time] - h
             mat_ef <- model.matrix(fixed, data = dmoins)
-            mat_ef <- as.data.frame(mat_ef[, -1])
+            mat_ef <- as.data.frame(mat_ef[, -1, drop = FALSE])
             mat_ea <- NULL
             if(!is.null(random)) mat_ea <- model.matrix(random, data = dmoins)
             Xmoins <- cbind(mat_ef, mat_ea)

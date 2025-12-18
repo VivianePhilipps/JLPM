@@ -743,7 +743,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 
     rangeTlong <- NULL
     try(rangeTlong <- range(data0[, var.time]), silent = TRUE)
-    
+
     ##creation de X0 (ttes les var + interactions)
     Xfixed <- model.matrix(fixed2[-2], data=data0)
     Xrandom <- model.matrix(random, data=data0)
@@ -811,7 +811,28 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     X0 <- as.matrix(X0)
     ##X0 fini
     
+    formulas <- list(form.subject = formula(paste("~", nom.subject)),
+                     fixed.left = fixed2[-3],
+                     fixed.right = fixed2[-2],
+                     random = random,
+                     contrast = contr,
+                     surv.left = formula(paste("~", paste(noms.surv, collapse = "+"))),
+                     surv.commun = form.commun,
+                     surv.cause = form.cause,
+                     form.cor = form.cor)
+    z <- removeNA(formulas, data = data)
+    term <- z$terms
+    names(term) <- names(formulas)
     
+    ## term <- list(form.subject = formula(paste("~", nom.subject)),
+    ##              fixed.left = terms(model.frame(terms(fixed2[-3]), data = data0)),
+    ##              fixed.right = terms(model.frame(terms(fixed2[-2]), data = data0)),
+    ##              random = terms(model.frame(terms(random), data = data0)),
+    ##              contrast = terms(model.frame(terms(contr), data = data0)),
+    ##              surv.left = formula(paste("~", paste(noms.surv, collapse = "+"))),
+    ##              surv.commun = terms(model.frame(terms(form.commun), data = data0)),
+    ##              surv.cause = terms(model.frame(terms(form.cause), data = data0)),
+    ##              form.cor = form.cor)
     
     ##test de link
     if (length(link)!=1 & length(link)!=ny) stop("One link per outcome should be specified")
@@ -1838,8 +1859,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     
     ###############
     ###   MLA   ###
-    ###############
-
+    ###############    
+    
     if(maxiter==0)
     {
         vrais <- loglik(b, Y0, X0, tsurv0, tsurv, devt, ind_survint, idea, idg, idcor,
@@ -2117,7 +2138,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                sharedtype = sharedtype, nonlin = nonlin, centerpoly = centerpoly0,
                posfix=posfix,CPUtime=cost[3], nMC = nMC, b=out$b, v=out$v,
                thres=thres,discrim=discrim,
-               rangeTsurv = c(minT, maxT), rangeTlong = rangeTlong)
+               rangeTsurv = c(minT, maxT), rangeTlong = rangeTlong, terms = term)
     
     names(res$best) <- namesb
     class(res) <-c("jointLPM")

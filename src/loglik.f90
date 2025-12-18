@@ -2192,10 +2192,10 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
   if (idtrunc.eq.1) then
      hlgth(2)=0.5d+00 * (Tsurv0(i) - zi(1,1))   !hlgth_entry
   end if
-  
+!  print*,"i=", i, "Tsurv = ", Tsurv(i), "Tsurv0=", Tsurv0(i)
   !!! risque de base au tps d event Ti
   risq(k) = fct_risq_base_irtsre_2(Tsurv(i),i,k,brisq,1,0) !avant dernier argument = 1 pr event ou 2 pr entry, dernier argument = 0 pr tps reel ou numero de point de quadrature GK (necessaire pr base de splines)
-
+!print*,"risq = ", risq(k)
   asso = 0.d0
   if(idst(k).eq.2 .or. idst(k).eq.4) then
      cli = curlev(i,beta_ef,ui)
@@ -2217,7 +2217,7 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
         asso = asso + sigmoid(csi, bassoCS)
      end if
   end if
-
+!print*,"asso = ", asso
   risq(k) = risq(k) * exp(asso)
 
 !!! risque cumule par quadrature de Kronrod
@@ -2229,7 +2229,9 @@ subroutine fct_risq_irtsre_2(i, k, brisq, bassoCL, bassoCS, beta_ef, ui, risq, s
       risq_GK_entry(p) = fct_risq_base_irtsre_2(Xcl0_GK((i-1)*15+p,1),i,k,brisq,2,p)
    end if
  end do
-
+!print*,"risq_GK_event(1)=", risq_GK_event(1)
+!print*,"risq_GK_entry(1)=", risq_GK_entry(1)
+!print*,"idst = ", idst(k), "nonlinCL = ", nonlinCL(k), "bassoCL = ", bassoCL
   !prediction niveau courant du processus a chq pnt de quadrature
   if(idst(k).eq.2 .or. idst(k).eq.4) then
      call fct_pred_curlev_irtsre_2(i,beta_ef,ui,pred_GK)

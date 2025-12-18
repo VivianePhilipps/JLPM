@@ -5,6 +5,7 @@
 
 static R_FortranMethodDef FortRout[] = {
   {"loglik", (DL_FUNC) &F77_SUB(loglik), 52},
+  {"reconddensity", (DL_FUNC) &F77_SUB(reconddensity), 44},
   {NULL, NULL, 0}
 };
 
