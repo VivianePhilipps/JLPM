@@ -25,6 +25,10 @@
 #' an impairment of Y lower or equal to 3.
 #' @param condState an optional list specifying the initial state at start time 
 #' (argument \code{startTime}) from which to compute the residual sojourn time.
+#' The state can be defined either as a single value or as an interval.
+#' For example \code{condState=list(Y = 2)} means that the state at start time
+#' is equal to 2, whereas \code{condState=list(Y = c(1, 2))} means that the
+#' state at start time is between 1 and 2 (both included).
 #' @param newdata a one line data frame specifying the covariate profile for
 #' which the sojourn time is computed.
 #' @param var.time a character string specifying the name of the time variable 
@@ -147,40 +151,58 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
     Yevent <- rep(NA,ny)
     indiceYevent <- rep(NA,ny)
     Ycond <- rep(NA,ny)
-    indiceYcond <- rep(NA,ny)
+    indiceYcond <- rep(NA,ny) 
+    indiceYinf <- rep(NA, 2 * ny) 
     nvalSPLORD <- rep(1,ny)
     uniqueY <- NULL
     indic_s1t2 <- rep(NA, 2*ny)
     for(k in 1:ny)
-    {
-        if(x$Names$Ynames[k] %in% names(condState))
-        {
-            if(idlink[k] != 3) stop("condState should only include ordinal outcomes")
-            Ycond[k] <- condState[[x$Names$Ynames[k]]]
-            nmes[k] <- nmes[k] + 1 # a faire : verifier qu'on a une seule valeur par Y
-            nmescond[k] <- nmescond[k] + 1
-            indiceYcond[k] <- which(x$mod[[k]] == Ycond[k])
-            indic_s1t2[2*(k-1)+1] <- 1
-        }
-        
+    {        
         if(x$Names$Ynames[k] %in% names(maxState))
         {
             if(idlink[k] != 3) stop("maxState should only include ordinal outcomes")
             Yevent[k] <- maxState[[x$Names$Ynames[k]]]
             nmes[k] <- nmes[k] + 1
-            indiceYevent[k] <- which(x$mod[[k]] == Yevent[k])
+            modality <- which(x$mod[[k]] == Yevent[k])
+            if(!length(modality)) stop(paste("maxState for outcome", x$Names$Ynames[k], "is not correct"))
+            indiceYevent[k] <- modality
             indic_s1t2[2*(k-1)+2] <- 2
+            indiceYinf[2*(k-1)+2] <- 0
         }
 
         if(idlink[k]==3) nvalSPLORD[k] <- length(x$mod[[k]])
         if(idlink[k]==3) uniqueY <- c(uniqueY,x$mod[[k]])
         if(idlink[k]==2) uniqueY <- c(uniqueY,x$linknodes[1,k])
         
+        if(x$Names$Ynames[k] %in% names(condState))
+        {
+            if(idlink[k] != 3) stop("condState should only include ordinal outcomes")
+            Ycondvect <- condState[[x$Names$Ynames[k]]]
+            ## if(length(Ycondvect) == 2)
+            ## { 
+            ##     if((Ycondvect[1] == x$mod[[k]][1]) & (Ycondvect[2] == x$mod[[k]][length(x$mod[[k]])]))
+            ##         next
+            ## }
+
+            modality <- which(x$mod[[k]] == Ycondvect[1]) - 1
+            if(!length(modality)) stop(paste("condState for outcome", x$Names$Ynames[k], "is not correct"))
+            indiceYinf[2*(k-1)+1] <- modality
+
+            Ycond[k] <- Ycondvect[length(Ycondvect)]
+            nmes[k] <- nmes[k] + 1 
+            nmescond[k] <- nmescond[k] + 1
+            modality <- which(x$mod[[k]] == Ycond[k])
+            if(!length(modality)) stop(paste("condState for outcome", x$Names$Ynames[k], "is not correct"))
+            indiceYcond[k] <- modality
+            indic_s1t2[2*(k-1)+1] <- 1
+            if(length(Ycondvect) > 2) stop(paste("condState for outcome", x$Names$Ynames[k], "should be of length 1 or 2"))
+        }
     }
     
     Y <- na.omit(as.vector(rbind(Ycond,Yevent)))
     indiceY <- na.omit(as.vector(rbind(indiceYcond,indiceYevent)))
     indic_s1t2 <- na.omit(indic_s1t2)
+    indiceYinf <- na.omit(indiceYinf)
     
     fixed <- gsub(paste("\\b",var.time,"\\b",sep=""),"t",x$form$fixed[2])
     random <- gsub(paste("\\b",var.time,"\\b",sep=""),"t",x$form$random[2])
@@ -260,7 +282,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         idea,idg,idcor,idcontr,idsurv,idtdv,
                         typrisq,nz,zi,nbevt,idtrunc,logspecif,
                         ny,nv,nobs,nea,nmes,idiag,ncor,nalea,
-                        epsY,idlink,nbzitr,zitr,uniqueY,indiceY,
+                        epsY,idlink,nbzitr,zitr,uniqueY,indiceY,indiceYinf,
                         nvalSPLORD,fix,methInteg,nMC,dimMC,seqMC,npm,b,nfix,bfix,computeSurv)
     {
         ## The function computes P(T > t, Y(t) = 0, Y(s) = 0) ##
@@ -291,7 +313,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             Xcs_Ti <- 0
             Xcs_GK <- 0
         }
-        
+       
         ## to compute P(Y(t)=0, Y(s) = 0):
         time <- ifelse(indic_s1t2==1, s, t)
         ##cat("time=", time, "\n")
@@ -371,6 +393,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                         as.double(zitr),
                         as.double(uniqueY),
                         as.integer(indiceY),
+                        as.integer(indiceYinf),
                         as.integer(nvalSPLORD),
                         as.integer(fix),
                         as.integer(methInteg),
@@ -413,7 +436,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                           ny=ny,nv=nv,nobs=nobs,nea=nea,nmes=nmes,idiag=idiag,ncor=ncor,
                           nalea=nalea,
                           epsY=epsY,idlink=idlink,nbzitr=nbzitr,zitr=zitr,
-                          uniqueY=uniqueY,indiceY=indiceY,
+                          uniqueY=uniqueY,indiceY=indiceY,indiceYinf=indiceYinf,
                           nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
                           dimMC=dimMC,seqMC=seqMC,npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix,
                           computeSurv= 1,
@@ -423,12 +446,13 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         
         result <- res1$value
 
-        
+       ## browser()
         if((startTime > zi[1, 1]) | length(na.omit(Ycond)))
         {
             nobscond <- length(na.omit(Ycond))
             Ycond <- na.omit(Ycond)
             indiceYcond <- na.omit(indiceYcond)
+            indiceYinfcond <- indiceYinf[which(indic_s1t2 == 1)]
             
             computeSurv <- 0
             if(startTime > zi[1, 1]) computeSurv <- 1
@@ -445,7 +469,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                             ny=ny,nv=nv,nobs=nobscond,nea=nea,nmes=nmescond,idiag=idiag,
                             ncor=ncor,nalea=nalea,
                             epsY=epsY,idlink=idlink,nbzitr=nbzitr,zitr=zitr,uniqueY=uniqueY,
-                            indiceY=indiceYcond,
+                            indiceY=indiceYcond,indiceYinf=indiceYinfcond,
                             nvalSPLORD=nvalSPLORD,fix=fix,methInteg=methInteg,nMC=nMC,
                             dimMC=dimMC,seqMC=seqMC,
                             npm=npm,b=bdrawest,nfix=nfix,bfix=bdrawfix, computeSurv=computeSurv)
@@ -521,7 +545,7 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                           "ny", "nv", "nobs", "nea", "nmes", "idiag", "ncor",
                           "nalea",
                           "epsY", "idlink", "nbzitr", "zitr",
-                          "uniqueY", "indiceY",
+                          "uniqueY", "indiceY", "indiceYinf",
                           "nvalSPLORD", "fix", "methInteg", "nMC",
                           "dimMC", "seqMC", "npmtot", "btot",
                           "rel.tol", "subdivisions",

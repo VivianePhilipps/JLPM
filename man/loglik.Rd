@@ -41,6 +41,7 @@ loglik(
   zitr0,
   uniqueY0,
   indiceY0,
+  indiceYinf0,
   nvalSPLORD0,
   fix0,
   methInteg0,
@@ -130,6 +131,8 @@ loglik(
 \item{uniqueY0}{uniqueY0}
 
 \item{indiceY0}{indiceY0}
+
+\item{indiceYinf0}{indiceYinf0}
 
 \item{nvalSPLORD0}{nvalSPLORD0}
 

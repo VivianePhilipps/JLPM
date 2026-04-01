@@ -356,6 +356,7 @@
 #' @examples
 #' #### Examples with paquid data from R-package lcmm
 #' library(lcmm)
+#' 
 #' paq <- paquid[which(paquid$age_init<paquid$agedem),]
 #' paq$age65 <- (paq$age-65)/10
 #'
@@ -1052,16 +1053,17 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
             modalites[[k]] <- uniqueTemp
         }
     }
-    
+    indiceYinf0 <- indiceY0 - 1
     
     ##ordonner les mesures par individu
-    matYX <- cbind(IND,Y0,indiceY0,outcome,X0)
+    matYX <- cbind(IND,Y0,indiceY0,indiceYinf0,outcome,X0)
     matYXord <- matYX[order(IND),]
     Y0 <- as.numeric(matYXord[,2])
-    X0 <- apply(matYXord[,-c(1:4),drop=FALSE],2,as.numeric)
+    X0 <- apply(matYXord[,-c(1:5),drop=FALSE],2,as.numeric)
     IND <- matYXord[,1]
-    outcome <- matYXord[,4]
+    outcome <- matYXord[,5]
     indiceY0 <- as.numeric(matYXord[,3])
+    indiceYinf0 <- as.numeric(matYXord[,4])
     
     if((nbevt>0)){
       
@@ -1867,7 +1869,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                         idcontr, idsurv, idtdv, typrisq, nz, zi, nbevt, idtrunc,
                         logspecif, ny, ns, nv, nobs, nmes, idiag0, ncor, nalea,
                         NPM, nfix, bfix, epsY, idlink, nbzitr, zitr, uniqueY0, indiceY0,
-                        nvalSPLORD, fix, methInteg, nMC, dimMC, seqMC, sharedtype,
+                        indiceYinf0, nvalSPLORD, fix, methInteg, nMC, dimMC, seqMC, sharedtype,
                         nbXpred, Xpred_Ti, Xpred, Xpredcs_Ti, Xpred_cs, nonlin,
                         centerpoly0, expectancy)
         
@@ -1891,11 +1893,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                    nv0 = nv, nobs0 = nobs, nmes0 = nmes, idiag0 = idiag0, 
                    ncor0 = ncor, nalea0 = nalea, npm0 = NPM, nfix0 = nfix, bfix0 = bfix, 
                    epsY0 = epsY, idlink0 = idlink, nbzitr0 = nbzitr, zitr0 = zitr, 
-                   uniqueY0 = uniqueY0, indiceY0 = indiceY0, nvalSPLORD0 = nvalSPLORD, 
+                   uniqueY0 = uniqueY0, indiceY0 = indiceY0, indiceYinf0 = indiceYinf0, nvalSPLORD0 = nvalSPLORD, 
                    fix0 = fix, methInteg0 = methInteg, nMC0 = nMC, dimMC0 = dimMC,
                    seqMC0 = seqMC, idst0 = sharedtype, nXcl0 = nbXpred,
                    Xcl_Ti0 = Xpred_Ti, Xcl_GK0 = Xpred, Xcs_Ti0 = Xpredcs_Ti,
-                   Xcs_GK0 = Xpred_cs, nonlin0 = nonlin, centerpoly0 = centerpoly0, 
+                   Xcs_GK0 = Xpred_cs, nonlin0 = nonlin, centerpoly0 = centerpoly0,
                    expectancy0 = expectancy)
         
         out <- list(conv=res$istop, V=res$v, best=res$b, predRE=NA, predRE_Y=NA, Yobs=NA,
@@ -2188,6 +2190,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 #' @param zitr0 zitr0
 #' @param uniqueY0 uniqueY0
 #' @param indiceY0 indiceY0
+#' @param indiceYinf0 indiceYinf0
 #' @param nvalSPLORD0 nvalSPLORD0
 #' @param fix0 fix0
 #' @param methInteg0 methInteg0
@@ -2210,10 +2213,10 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 loglik <- function(b0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,ns0,
                    nv0,nobs0,nmes0,idiag0,ncor0,nalea0,npm0,nfix0,bfix0,
-                   epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,nvalSPLORD0,fix0,
+                   epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0,indiceYinf0,nvalSPLORD0,fix0,
                    methInteg0,nMC0,dimMC0,seqMC0,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,
                    Xcs_Ti0,Xcs_GK0,nonlin0,centerpoly0,expectancy0)
 {
     res <- 0
-    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.double(Xcs_Ti0),as.double(Xcs_GK0),as.integer(nonlin0),as.double(centerpoly0),as.integer(expectancy0),loglik_res=as.double(res))$loglik_res
+    .Fortran(C_loglik,as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(ns0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.integer(nfix0),as.double(bfix0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(indiceYinf0),as.integer(nvalSPLORD0),as.integer(fix0),as.integer(methInteg0),as.integer(nMC0),as.integer(dimMC0),as.double(seqMC0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.double(Xcs_Ti0),as.double(Xcs_GK0),as.integer(nonlin0),as.double(centerpoly0),as.integer(expectancy0),loglik_res=as.double(res))$loglik_res
 }

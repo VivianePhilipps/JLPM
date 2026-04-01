@@ -32,7 +32,11 @@ defining the maximum state for the computation of the sojourn time. For instance
 an impairment of Y lower or equal to 3.}
 
 \item{condState}{an optional list specifying the initial state at start time 
-(argument \code{startTime}) from which to compute the residual sojourn time.}
+(argument \code{startTime}) from which to compute the residual sojourn time.
+The state can be defined either as a single value or as an interval.
+For example \code{condState=list(Y = 2)} means that the state at start time
+is equal to 2, whereas \code{condState=list(Y = c(1, 2))} means that the
+state at start time is between 1 and 2 (both included).}
 
 \item{newdata}{a one line data frame specifying the covariate profile for
 which the sojourn time is computed.}

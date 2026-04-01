@@ -17,7 +17,7 @@ module modirtsre
   double precision,dimension(:,:),allocatable,save::Tsurv0_st2,Tsurv_st2
   integer,dimension(:),allocatable,save::Devt,ind_survint
   integer,dimension(:),allocatable,save::idtdv,idsurv
-  integer,dimension(:),allocatable,save::idea,idg,idcor,idcontr,indiceY
+  integer,dimension(:),allocatable,save::idea,idg,idcor,idcontr,indiceY,indiceYinf
   integer,dimension(:),allocatable,save::idlink,ntr
   integer,dimension(:,:),allocatable,save::nmes
   integer,dimension(:),allocatable,save::nvalSPL,nvalORD
@@ -55,7 +55,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0 &
      ,ny0,ns0,nv0,nobs0,nmes0,idiag0,ncor0,nalea0&
      ,npm0,b0,nfix0,bfix0,epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0 &
-     ,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
+     ,indiceYinf0,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
      ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,Xcs_Ti0,Xcs_GK0,nonlin0,centerpoly0 &
      ,expectancy0,loglik_res)
 
@@ -75,7 +75,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   double precision,dimension(ny0),intent(in)::epsY0
   integer, dimension(ny0),intent(in)::idlink0,nbzitr0,nvalSPLORD0
   double precision,dimension(maxval(nbzitr0),ny0),intent(in)::zitr0
-  integer,dimension(nobs0),intent(in)::indiceY0
+  integer,dimension(nobs0),intent(in)::indiceY0, indiceYinf0
   double precision,dimension(sum(nvalSPLORD0(:))),intent(in)::uniqueY0
   integer, dimension(nv0),intent(in)::idea0,idg0,idcor0,idcontr0
   integer,dimension(ns0,ny0)::nmes0   
@@ -206,7 +206,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   ntrtot = sum(ntr)
   allocate(Y(nobs0),X(nobs0,nv0),uniqueY(ntotvalSPL+ntotvalORD) &
        ,idea(nv0),idg(nv0),idcor(nv0),idcontr(nv0),nmes(ns0,ny0) &
-       ,indiceY(nobs0))
+       ,indiceY(nobs0),indiceYinf(nobs0))
 
   allocate(Tsurv0(ns0),Tsurv(ns0),Tsurvint(ns0),ind_survint(ns0),Devt(ns0))
   allocate(Tsurv0_st2(ns0,15),Tsurv_st2(ns0,15))
@@ -316,6 +316,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
                  jtemp=jtemp+1
                  Y(jtemp)=Y0(jtemp)
                  indiceY(jtemp)=indiceY0(jtemp)
+                 indiceYinf(jtemp)=indiceYinf0(jtemp)
                  ktemp=ktemp+1
                  X(jtemp,k)=X0(ktemp)
               end do
@@ -508,7 +509,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      end if
   end if
 
-  ! vraisemblance (=0) ou temps de sejour (=1)
+  !vraisemblance (=0) ou temps de sejour (=1)
   expectancy = expectancy0
 
   ! calcul de la vraisemblance
@@ -534,7 +535,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
        ,ind_survint,zi,devt,typrisq,nz,nprisq,idsurv,idtdv &
        ,nevtparx,nxcurr)
 
-  deallocate(Y,X,idea,idg,idcor,idcontr,nmes,uniqueY,indiceY,ntr)
+  deallocate(Y,X,idea,idg,idcor,idcontr,nmes,uniqueY,indiceY,indiceYinf,ntr)
 
 
   deallocate(zitr,mm,mm1,mm2,im,im1,im2,minY,maxY,rangeY,idlink,nvalSPL,nvalORD,epsY)
@@ -633,7 +634,7 @@ double precision function vrais_i(b,npm,i)
   double precision::ai,binf,bsup
   double precision,dimension(nbevt)::risq,surv,surv0,survint
   double precision::SX,x22,div,vrais_Y,vrais_surv,varexpsurv
-  double precision::surv0_glob,surv_glob,fevt,easurv  
+  double precision::surv0_glob,surv_glob,fevt,easurv,alnormbinf
   double precision,external::alnorm, poly, logit, sigmoid
   double precision::pred_cl_Ti 
   double precision::som_T0,som_Ti
@@ -1091,11 +1092,13 @@ double precision function vrais_i(b,npm,i)
               if(indiceY(nmescur+sumMesYk+j).gt.1) then
                  do ll=2,min(indiceY(nmescur+sumMesYk+j),ntr(yk))
                     bsup = bsup + b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+ll)**2
-                    if(ll.lt.indiceY(nmescur+sumMesYk+j)) then
+                    if(ll.le.indiceYinf(nmescur+sumMesYk+j)) then
                        binf = binf + b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+sumntr+ll)**2
                     end if
                  end do
               end if
+              !!print*,"Y=", Y(nmescur+sumMesYk+j), "binf=",binf, "bsup=",bsup
+              !!print*, "indiceY = ", indiceY(nmescur+sumMesYk+j), "indiceY = ",indiceYinf(nmescur+sumMesYk+j)
               !if(i.lt.2)print*,"y=",Y1(sumMesYk+j)," indiceY=",indiceY(nmescur+sumMesYk+j),  &
               !     " Y=",Y(nmescur+sumMesYk+j)," mu=",mu(sumMesYk+j)
               !if(i.lt.2)print*," binf=",binf," bsup=",bsup
@@ -1106,26 +1109,41 @@ double precision function vrais_i(b,npm,i)
               bsup = (bsup - mu(sumMesYk+j))/abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+yk))
 
               !if(i.lt.2) print*,"yk=",yk,"j=",j," nvalORD=",nvalORD(ykord)
-              
+
+              alnormbinf = 0.d0
+              if(indiceYinf(nmescur+sumMesYk+j).gt.0) then
+                 alnormbinf = alnorm(binf,.false.)
+              end if
+              !print*,"Y=",Y, "indiceY=",indiceY, "indiceYinf=",indiceYinf
+              !!print*, "alnormbinf=",alnormbinf, "expect=", expectancy
               !if(i.lt.2) print*,"indice = ", indiceY(nmescur+sumMesYk+j)," binf=",binf," bsup=",bsup
               if(indiceY(nmescur+sumMesYk+j).eq.1) then
                  !! si Y=minY
-                 !if(i.lt.2) print*,"min"
+                  !!print*,"min"
+                 !! P(Y = minY) = P(N < binf)
                  vrais_Y = vrais_Y * alnorm(binf,.false.)
               else if(indiceY(nmescur+sumMesYk+j).eq.nvalORD(ykord)) then
                  !! si Y=maxY
-                 !if(i.lt.2) print*,"max"
-                 if(expectancy.eq.0) then
+                 !! print*,"max"
+                 if(expectancy.eq.0) then 
+                    !! P(Y = maxY) = P(N > bsup) -> loglik
                     vrais_Y = vrais_Y * (1.d0-alnorm(bsup,.false.))
+                 else
+                    if(indiceYinf(nmescur+sumMesYk+j).gt.1) then
+                       !! P(Y in [m, maxY]) = P(N > binf) -> pour sojournTime
+                       vrais_Y = vrais_Y * (1.d0-alnorm(binf,.false.))
+                    end if
                  end if
+                 !! j'ai verifie dans sojournTime.R que l'on n'a pas Y in [minY, maxY]
               else
                  !! minY < Y < maxY
-                 !if(i.lt.2) print*,"entre min et max"
-                 if(expectancy.eq.0) then
-                    vrais_Y = vrais_Y * (alnorm(bsup,.false.)-alnorm(binf,.false.))
-                 else
-                    vrais_Y = vrais_Y * alnorm(bsup,.false.)
-                 end if
+                 !!print*,"entre min et max"
+                 !!print*,""
+                 !if(expectancy.eq.0) then
+                    vrais_Y = vrais_Y * (alnorm(bsup,.false.)- alnormbinf)
+                 !else
+                 !   vrais_Y = vrais_Y * alnorm(bsup,.false.)
+                 !end if
               end if
               !if(i.lt.2) print*,"vrais_Y=",vrais_Y
            end do
