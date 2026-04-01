@@ -90,7 +90,7 @@
 #' var.time = "age65")
 #'
 #' #### Computation of the expected residual time with maximum HIER impairment
-#'  of 2 (HIER = 2), given the impairment was at most 1 at time 0.5
+#'  of 2 (HIER = 2), given the impairment was 1 at time 0.5
 #' #### (=int_0.5^150 P(HIER(t) <= 2, T > t | HIER(0.5) <= 1, T > 0.5) dt)
 #' sojournTime(M2, list(HIER = 2), condState = list(HIER = 1), startTime = 0.5,
 #' newdata = data.frame(male = 0), var.time = "age65")
@@ -178,11 +178,6 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         {
             if(idlink[k] != 3) stop("condState should only include ordinal outcomes")
             Ycondvect <- condState[[x$Names$Ynames[k]]]
-            ## if(length(Ycondvect) == 2)
-            ## { 
-            ##     if((Ycondvect[1] == x$mod[[k]][1]) & (Ycondvect[2] == x$mod[[k]][length(x$mod[[k]])]))
-            ##         next
-            ## }
 
             modality <- which(x$mod[[k]] == Ycondvect[1]) - 1
             if(!length(modality)) stop(paste("condState for outcome", x$Names$Ynames[k], "is not correct"))

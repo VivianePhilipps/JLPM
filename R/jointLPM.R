@@ -356,7 +356,6 @@
 #' @examples
 #' #### Examples with paquid data from R-package lcmm
 #' library(lcmm)
-#' 
 #' paq <- paquid[which(paquid$age_init<paquid$agedem),]
 #' paq$age65 <- (paq$age-65)/10
 #'
@@ -590,7 +589,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
             
             noms.surv <-  c(as.character(surv[2]),as.character(surv[3]))
             
-            surv <- do.call("Surv",list(time=Tevent,event=Event,type="mstate"))  
+            surv <- do.call("Surv",list(time=Tevent,event=factor(Event)))  
         }
         
         if(length(surv)==4) #censure droite et troncature
@@ -603,11 +602,11 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
             
             noms.surv <-  c(as.character(surv[2]),as.character(surv[3]),as.character(surv[4]))   
             
-            surv <- do.call("Surv",list(time=Tentry,time2=Tevent,event=Event,type="mstate"))   
+            surv <- do.call("Surv",list(time=Tentry,time2=Tevent,event=factor(Event)))   
         }  
         
         ## nombre d'evenement concurrents
-        nbevt <- length(attr(surv,"states"))
+        nbevt <- length(setdiff(unique(surv[, ncol(surv)]), c(NA, 0)))
         if(nbevt < 1)
         {
             warning("No observed event in the data")
@@ -1076,6 +1075,9 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
       devt <- data.surv[,3]
       tsurvint <- data.surv[,4]
       ind_survint <- (tsurvint<tsurv) + 0
+
+        ## confirm nbevt for the selected sample (IND)
+        nbevt <- max(1, length(setdiff(unique(devt), 0)))
       
       ## test de hazard
       arghaz <- hazard
