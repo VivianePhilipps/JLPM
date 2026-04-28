@@ -1,0 +1,78 @@
+---
+title: "Joint Latent Process Models"
+output: 
+  rmarkdown::html_vignette:
+    toc: true # table of content true
+    toc_depth : 2  
+vignette: >
+  %\VignetteIndexEntry{Joint Latent Process Model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The R package JLPM implements in the jointLPM function the estimation of a joint shared random effects model.
+
+&nbsp;
+
+The longitudinal data ($y_1, y_2, \dots, y_K$) can be continuous or ordinal and are modelled using a mixed model.
+
+&nbsp;
+
+
+For the continuous Gaussian case:
+
+\[
+  \forall k \in 1,\dots,K \hspace{1cm}  y_k(t_{ijk}) = X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} 
+\]
+
+For the continuous non Gaussien case, a transformation $H_k$ is estimated for each outcome:
+
+\[
+  \forall k \in 1,\dots,K \hspace{1cm}  H_k(y_k(t_{ijk}), \eta_k) = X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} 
+\]
+
+
+For the ordinal case, mixed models are combined to the Item Response Theory:
+
+\[
+  \forall k \in 1,\dots,K \hspace{1cm} \mathbb{P}( y_k(t_{ijk}) = m) \Leftrightarrow \mathbb{P}(\eta_{m-1} <  X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} < \eta_m)
+\]
+
+where  $X_i(t_{ijk})$ and $Z_i(t_{ijk})$ are vectors of covariates measured at time $t_{ijk}$ for subject $i$, $\beta$ is the vector of fixed effects, $u_i \sim \mathcal{N}(0,B)$,  $\varepsilon_{ijk} \sim \mathcal{N}(0,\sigma_k^2)$, $\eta_k$ are the parameters of the link function $H_k$ or the thresholds associated to the outcome $y_k$.
+
+Note that even with multiple longitudinal outcomes, a univariate mixed model is estimated.
+
+&nbsp;
+
+The time-to-event data are modelled in a proportional hazard model where different associations between the longitudinal outcome and the event can be included.
+
+
+&nbsp;
+
+With an association through the random effects of the longitudinal model:
+
+\[
+  \alpha_i(t) = \alpha_0(t) \exp(\tilde{X}_i \gamma + \delta u_i)
+\]
+
+
+With an association through the current level of the longitudinal model:
+
+\[
+  \alpha_i(t) = \alpha_0(t) \exp(\tilde{X}_i \gamma + \delta (X_i(t)\beta + Z_i(t)u_i))
+\]
+
+
+With an association through the current slope of the longitudinal model:
+
+\[
+  \alpha_i(t) = \alpha_0(t, \omega) \exp(\tilde{X}_i \gamma + \delta (
+  \frac{d}{dt}X_i(t)\beta + \frac{d}{dt}Z_i(t)u_i))
+\]
+
+
+  with $\alpha_0(t, \omega)$ the baseline risk function at time $t$, parameterized with $\omega$,$\tilde{X}_i$ a vector of covariates,  $\gamma$ the fixed effects, $\delta$ the association parameter.
+
+&nbsp;
+
+The parameters $\beta, B, \sigma_k, \eta_k, \omega, \gamma, \delta$ are estimated using a Marquardt-Levenberg algorithm.
