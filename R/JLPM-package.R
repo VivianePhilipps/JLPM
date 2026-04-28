@@ -25,13 +25,14 @@
 #' @keywords package
 #' @importFrom graphics axis hist lines matlines matplot mtext par plot points segments polygon
 #' @importFrom grDevices rainbow rgb col2rgb n2mfrow
-#' @importFrom stats as.formula formula get_all_vars integrate median model.frame model.matrix na.fail na.omit na.pass pchisq pnorm qnorm quantile rnorm sd terms residuals vcov fitted coef update
+#' @importFrom stats as.formula formula get_all_vars integrate median model.frame model.matrix delete.response na.action na.fail na.omit na.pass pchisq dnorm pnorm qnorm quantile rnorm sd terms residuals vcov fitted coef update
 #' @importFrom survival Surv untangle.specials
 #' @importFrom spacefillr generate_sobol_owen_set
 #' @importFrom stringr str_detect
+#' @importFrom utils as.roman
 #' @importFrom parallel clusterEvalQ clusterExport clusterSetRNGStream makeCluster parApply stopCluster
 #' @importFrom marqLevAlg mla
-#' @importFrom lcmm multlcmm Jointlcmm
+#' @importFrom lcmm multlcmm Jointlcmm predictYcond
 #' @useDynLib JLPM, .registration=TRUE, .fixes="C_"
 NULL
 

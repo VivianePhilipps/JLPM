@@ -437,11 +437,11 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
                           computeSurv= 1,
                           rel.tol=rel.tol, subdivisions=subdivisions))
 
-        if(class(res1)=="try-error") print(bdraw)
+        ##if(inherits(res1, "try-error")) print(bdraw)
         
         result <- res1$value
 
-       ## browser()
+        ##browser()
         if((startTime > zi[1, 1]) | length(na.omit(Ycond)))
         {
             nobscond <- length(na.omit(Ycond))

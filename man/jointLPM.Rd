@@ -304,8 +304,8 @@ c1=exp(b1)/[exp(b2)*(1+exp(b1))] and c2=1/[exp(b2)*(1+exp(b1))], and Y(t)'
 is the rescaled outcome i.e. Y(t)'= [ Y(t) - min(Y(t)) + epsY ] / [
 max(Y(t)) - min(Y(t)) +2*epsY ].
 With the "splines" link function, n+2 parameters are required for the
-following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2}*I_{n+1}(Y(t)),
-where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constrain the
+following transformation b_1 + b_2*I_1(Y(t)) + ... + b_(n+2)*I_(n+1)(Y(t)),
+where I_1,...,I_(n+1) is the basis of quadratic I-splines. To constrain the
 parameters to be positive, except for b_1, the program estimates b_k^* (for
 k=2,...,n+2) so that b_k=(b_k^*)^2.
 

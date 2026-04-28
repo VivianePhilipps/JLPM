@@ -1,15 +1,18 @@
-## Function : createX0
-## Args :
-##  - form : a list of formula
-##  - data : a data frame containing all variables mentionned in form
-## Returns : a list containing
-##  - X0 : the pooled (with cbind) model matrix. The number of lines is the same as in 'data'.
-##  - idform : a list of the same length as 'form' specifying which term of X0 appear in each formula.
-##
-## Caution 1 : 'data' should not contain any missing values. There is no check for that within the function.
-## Caution 2 : if interaction terms are present, the names are sorted. For example x:age becomes age:x in X0.
-## Caution 3 : intercept is not systematically in the first column. It will only if form[[1]] contains an intercept.
-
+#' createX0
+#'
+#' Create the matrix containing all covariates appearing in the formula
+#' 
+#'
+#' Caution 1 : 'data' should not contain any missing values. There is no check for that within the function.
+#' Caution 2 : if interaction terms are present, the names are sorted. For example x:age becomes age:x in X0.
+#' Caution 3 : intercept is not systematically in the first column. It will only if form[[1]] contains an intercept.
+#' 
+#' @param form a list of formula
+#' @param data a data frame containing all variables mentionned in form
+#' @return a list containing
+#'   \item{X0}{the pooled (with cbind) model matrix. The number of lines is the same as in 'data'}
+#'  \item{idform}{a list of the same length as 'form' specifying which term of X0 appear in each formula}
+#' 
 #'@export
 createX0 <- function(form, data)
 {   

@@ -10,25 +10,16 @@ IRT4Sselecting(D, proj)
 \item{D}{an object of class \code{jointLPM} representing the estimated 
 dimension model with the items}
 
-\item{Dss}{an object of class \code{jointLPM} representing the estimated proxy 
-model between the dimension scores and the stages}
-
-\item{nsim}{number of points used in the numerical integration (Monte-Carlo). 
-nsim should be relatively important (nsim=1000 by default).}
-
-\item{bounds}{dimension scale boundaries between which are computed a grid of
-the dum of the items}
+\item{proj}{a vector}
 }
 \value{
-a vector of the estimated stage transition thresholds
+a list of two matrices
 
 ###@examples
 }
 \description{
 This function computes the contribution if each item during stages, based on 
-the Fisher information. 
-Specifically, this function xxx. 
-The output is a list of two matrices : xxx.
+the Fisher information.
 }
 \references{
 preprint :  arXiv:2407.08278

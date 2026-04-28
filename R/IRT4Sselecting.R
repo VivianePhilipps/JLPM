@@ -2,19 +2,12 @@
 #'
 #' This function computes the contribution if each item during stages, based on 
 #' the Fisher information. 
-#' Specifically, this function xxx. 
-#' The output is a list of two matrices : xxx.
 #' 
 #' @param D an object of class \code{jointLPM} representing the estimated 
 #' dimension model with the items
-#' @param Dss an object of class \code{jointLPM} representing the estimated proxy 
-#' model between the dimension scores and the stages
-#' @param nsim number of points used in the numerical integration (Monte-Carlo). 
-#' nsim should be relatively important (nsim=1000 by default).
-#' @param bounds dimension scale boundaries between which are computed a grid of
-#' the dum of the items
+#' @param proj a vector
 #'
-#' @return a vector of the estimated stage transition thresholds
+#' @return a list of two matrices
 #' 
 #' ###@examples
 #' 

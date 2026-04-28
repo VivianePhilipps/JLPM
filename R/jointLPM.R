@@ -48,8 +48,8 @@
 #' is the rescaled outcome i.e. Y(t)'= [ Y(t) - min(Y(t)) + epsY ] / [
 #' max(Y(t)) - min(Y(t)) +2*epsY ].
 #' With the "splines" link function, n+2 parameters are required for the
-#' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_{n+2}*I_{n+1}(Y(t)),
-#' where I_1,...,I_{n+1} is the basis of quadratic I-splines. To constrain the
+#' following transformation b_1 + b_2*I_1(Y(t)) + ... + b_(n+2)*I_(n+1)(Y(t)),
+#' where I_1,...,I_(n+1) is the basis of quadratic I-splines. To constrain the
 #' parameters to be positive, except for b_1, the program estimates b_k^* (for
 #' k=2,...,n+2) so that b_k=(b_k^*)^2.
 #' 
@@ -2202,8 +2202,8 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
 #' @param idst0 idst0
 #' @param nXcl0 nXcl0
 #' @param Xcl_Ti0 Xcl_Ti0
-#' @param Xcl_Ti0 Xcl_Ti0
-#' @param Xcs_GK0 Xcs_GK0
+#' @param Xcl_GK0 Xcl_GK0
+#' @param Xcs_Ti0 Xcs_Ti0
 #' @param Xcs_GK0 Xcs_GK0
 #' @param nonlin0 nonlin0
 #' @param centerpoly0 centerpoly0

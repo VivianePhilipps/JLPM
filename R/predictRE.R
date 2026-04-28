@@ -1,3 +1,21 @@
+#' Random effects prediction
+#'
+#' The random effects of a \code{jointLPM} model are predicted as the mode of 
+#' the conditional distribution of the random effects given the subject's
+#' longitudinal and survival observations.
+#'
+#' @param x a \code{jointLPM} object
+#' @param data a data.frame object containing the data from the predictions are
+#'  to be computed
+#' @param control optional list of arguments to be passed to the
+#' \code{marqLevAlg} optimization function.
+#' @param variance logical indicating whether the variance of the estimated
+#' predictions should be returned. Default ot FALSE.
+#'
+#' @return a matrix containing the predicted random effects (in columns) for
+#' each subject (in rows). If \code{variance = TRUE}, returns a list containing
+#' the previous matrix and a vector containing the upper part of each variance
+#' matrix.
 #' @export
 predictRE <- function(x, data, control = NULL, variance = FALSE)
 {
@@ -121,6 +139,54 @@ predictRE <- function(x, data, control = NULL, variance = FALSE)
         return(predRE)
 }
 
+#' REconddendity
+#'
+#' Wrapper to the Fortran subroutine computing the conditional density of the random effects
+#'
+#' @param ui0 ui0
+#' @param Y0 Y0
+#' @param X0 X0
+#' @param Tentr0 Tentr0
+#' @param Tevt0 Tevt0
+#' @param Devt0 Devt0
+#' @param ind_survint0 ind_survint0
+#' @param idea0 idea0
+#' @param idg0 idg0
+#' @param idcor0 idcor0
+#' @param idcontr0 idcontr0
+#' @param idsurv0 idsurv0
+#' @param idtdv0 idtdv0
+#' @param typrisq0 typrisq0
+#' @param nz0 nz0
+#' @param zi0 zi0
+#' @param nbevt0 nbevt0
+#' @param idtrunc0 idtrunc0
+#' @param logspecif0 logspecif0
+#' @param ny0 ny0
+#' @param nv0 nv0
+#' @param nobs0 nobs0
+#' @param nmes0 nmes0
+#' @param idiag0 idiag0
+#' @param ncor0 ncor0
+#' @param nalea0 nalea0
+#' @param npm0 npm0
+#' @param b0 b0
+#' @param epsY0 epsY0
+#' @param idlink0 idlink0
+#' @param nbzitr0 nbzitr0
+#' @param zitr0 zitr0
+#' @param uniqueY0 uniqueY0
+#' @param indiceY0 indiceY0
+#' @param nvalSPLORD0 nvalSPLORD0
+#' @param idst0 idst0
+#' @param nXcl0 nXcl0
+#' @param Xcl_Ti0 Xcl_Ti0
+#' @param Xcl_GK0 Xcl_GK0
+#' @param Xcs_Ti0 Xcs_Ti0
+#' @param Xcs_GK0 Xcs_GK0
+#' @param nonlin0 nonlin0
+#' @param centerpoly0 centerpoly0
+#' @return the log-density
 #' @export
 REconddensity <- function(ui0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,idcor0,idcontr0,
                    idsurv0,idtdv0,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0,ny0,
@@ -133,6 +199,13 @@ REconddensity <- function(ui0,Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0,idea0,idg0,i
     .Fortran(C_reconddensity,as.double(ui0),as.double(Y0),as.double(X0),as.double(Tentr0),as.double(Tevt0),as.integer(Devt0),as.integer(ind_survint0),as.integer(idea0),as.integer(idg0),as.integer(idcor0),as.integer(idcontr0),as.integer(idsurv0),as.integer(idtdv0),as.integer(typrisq0),as.integer(nz0),as.double(zi0),as.integer(nbevt0),as.integer(idtrunc0),as.integer(logspecif0),as.integer(ny0),as.integer(nv0),as.integer(nobs0),as.integer(nmes0),as.integer(idiag0),as.integer(ncor0),as.integer(nalea0),as.integer(npm0),as.double(b0),as.double(epsY0),as.integer(idlink0),as.integer(nbzitr0),as.double(zitr0),as.double(uniqueY0),as.integer(indiceY0),as.integer(nvalSPLORD0),as.integer(idst0),as.integer(nXcl0),as.double(Xcl_Ti0),as.double(Xcl_GK0),as.double(Xcs_Ti0),as.double(Xcs_GK0),as.integer(nonlin0),as.double(centerpoly0),loglik_res=as.double(res))$loglik_res
 }
 
+#' Likelihood arguments
+#'
+#' Create the arguments to be passed to the \code{loglik} function
+#'
+#' @param x a \code{jointLPM} object
+#' @param data a data.frame containing the estimation dataset
+#' @return a named list
 #'@export
 createFargs <- function(x, data)
 {

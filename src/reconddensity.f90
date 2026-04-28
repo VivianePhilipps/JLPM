@@ -695,7 +695,7 @@ double precision function conddensity(ui, b)
            !print*,"mm2 =",mm2(nmescur+sumMesYk+j)
            !print*,"Y =",Y(nmescur+sumMesYk+j)
 
-                           write(*,*)'Y',Y1(sumMesYk+j),sumMesYk,yk,j,jacobien
+           !                write(*,*)'Y',Y1(sumMesYk+j),sumMesYk,yk,j,jacobien
         end do
      else if (idlink(yk).eq.3) then  ! Threshold link
         do j=1,nmes(i,yk)
