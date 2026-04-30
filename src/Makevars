@@ -10,6 +10,6 @@ $(SHLIB): $(OBJECTS)
 
 
 #Setup dependencies for parallel make
-reconddensity.o: compute.o
+reconddensity.o: compute.o loglik.o
 loglik.o: compute.o
 compute.o: runiran.o
