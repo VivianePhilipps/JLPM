@@ -1,8 +1,8 @@
 Package: JLPM
 Type: Package
 Title: Joint Latent Process Models
-Version: 1.0.3
-Date: 2026-04-27
+Version: 1.0.4
+Date: 2026-04-30
 Authors@R: c(person("Viviane", "Philipps", role=c("aut", "cre"), email="Viviane.Philipps@u-bordeaux.fr"),
              person("Tiphaine", "Saulnier", role="aut"),
 	     person("Cecile", "Proust-Lima", role="aut"))
@@ -13,5 +13,4 @@ Imports: survival (>= 2.37-2), spacefillr, stringr, marqLevAlg (>= 2.0.6)
 Suggests: knitr, rmarkdown
 BugReports: https://github.com/VivianePhilipps/JLPM/issues
 LazyLoad: yes
-VignetteBuilder: knitr
 RoxygenNote: 7.3.3

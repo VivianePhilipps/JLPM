@@ -18,27 +18,20 @@ The longitudinal data ($y_1, y_2, \dots, y_K$) can be continuous or ordinal and 
 
 &nbsp;
 
-
-For the continuous Gaussian case:
-
-\[
-  \forall k \in 1,\dots,K \hspace{1cm}  y_k(t_{ijk}) = X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} 
-\]
-
-For the continuous non Gaussien case, a transformation $H_k$ is estimated for each outcome:
+For the continuous case, a transformation $H_k$ is estimated for outcome $y_k$ ($k \in 1,\dots,K$) :
 
 \[
-  \forall k \in 1,\dots,K \hspace{1cm}  H_k(y_k(t_{ijk}), \eta_k) = X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} 
+  H_k(y_k(t_{ijk}), \eta_k) = X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} 
 \]
 
 
-For the ordinal case, mixed models are combined to the Item Response Theory:
+For an ordinal outcome, mixed models are combined to the Item Response Theory:
 
 \[
-  \forall k \in 1,\dots,K \hspace{1cm} \mathbb{P}( y_k(t_{ijk}) = m) \Leftrightarrow \mathbb{P}(\eta_{m-1} <  X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} < \eta_m)
+  \mathbb{P}( y_k(t_{ijk}) = m) \Leftrightarrow \mathbb{P}(\eta_{k, m-1} <  X_i(t_{ijk})\beta + Z_i(t_{ijk})u_i + \varepsilon_{ijk} < \eta_{k, m})
 \]
 
-where  $X_i(t_{ijk})$ and $Z_i(t_{ijk})$ are vectors of covariates measured at time $t_{ijk}$ for subject $i$, $\beta$ is the vector of fixed effects, $u_i \sim \mathcal{N}(0,B)$,  $\varepsilon_{ijk} \sim \mathcal{N}(0,\sigma_k^2)$, $\eta_k$ are the parameters of the link function $H_k$ or the thresholds associated to the outcome $y_k$.
+where  $X_i(t_{ijk})$ and $Z_i(t_{ijk})$ are vectors of covariates measured at time $t_{ijk}$ for subject $i$, $\beta$ is the vector of fixed effects, $u_i \sim \mathcal{N}(0,B)$ are the random effects,  $\varepsilon_{ijk} \sim \mathcal{N}(0,\sigma_k^2)$ the measurement errors, $\eta_k$ are the parameters of the link function $H_k$ or the thresholds associated to the outcome $y_k$.
 
 Note that even with multiple longitudinal outcomes, a univariate mixed model is estimated.
 
@@ -52,14 +45,14 @@ The time-to-event data are modelled in a proportional hazard model where differe
 With an association through the random effects of the longitudinal model:
 
 \[
-  \alpha_i(t) = \alpha_0(t) \exp(\tilde{X}_i \gamma + \delta u_i)
+  \alpha_i(t) = \alpha_0(t, \omega) \exp(\tilde{X}_i \gamma + \delta u_i)
 \]
 
 
 With an association through the current level of the longitudinal model:
 
 \[
-  \alpha_i(t) = \alpha_0(t) \exp(\tilde{X}_i \gamma + \delta (X_i(t)\beta + Z_i(t)u_i))
+  \alpha_i(t) = \alpha_0(t, \omega) \exp(\tilde{X}_i \gamma + \delta (X_i(t)\beta + Z_i(t)u_i))
 \]
 
 
@@ -71,7 +64,7 @@ With an association through the current slope of the longitudinal model:
 \]
 
 
-  with $\alpha_0(t, \omega)$ the baseline risk function at time $t$, parameterized with $\omega$,$\tilde{X}_i$ a vector of covariates,  $\gamma$ the fixed effects, $\delta$ the association parameter.
+  with $\alpha_0(t, \omega)$ the baseline hazard function at time $t$, parameterized with $\omega$, $\tilde{X}_i$ a vector of time-fixed covariates, $\gamma$ the fixed effects, and $\delta$ the association parameter.
 
 &nbsp;
 

@@ -1,5 +1,10 @@
+^R/plotAsso.R
 ^vignettes/estimated\_models\.RData
 ^vignettes/script\_4Smethod\.Rmd
 ^vignettes/simulated\_data\.RData
+^vignettes/JLPM\.Rmd
 ^doc$
 ^Meta$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
