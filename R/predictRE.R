@@ -440,3 +440,53 @@ createFargs <- function(x, data)
 
     return(res)
 }
+
+
+
+#' Posterior density of the random effects for 1 subject
+#'
+#' @param value numeric vector containing the value at which the log-likelihood will be computed
+#' @param x a \code{jointLPM} object
+#' @param data a data.frame object containing the observations of a single subject
+#' @return the conditional log-likelihood of the random effects given the observed data
+#' @export
+posteriorLogLikelihood <- function(value, x, data)
+{
+    data <- as.data.frame(data)
+
+    ## loglik arguments
+    Fargs <- createFargs(x, data)
+
+    ## no cor, no randomY
+    if(Fargs$ncor0 > 0) stop("No implemented yet with cor")
+    if(Fargs$nalea0 > 0) stop("No implemented yet with randomY")
+
+    ## id in (clean) data
+    id <- as.numeric(Fargs$ID)
+    Fargs <- Fargs[setdiff(names(Fargs), "ID")]
+
+    ## remove unused arguments
+    Fargs$ns0 <- NULL
+    Fargs$methInteg0 <- NULL
+    Fargs$nMC0 <- NULL
+    Fargs$dimMC0 <- NULL
+    Fargs$seqMC0 <- NULL
+    Fargs$expectancy0 <- NULL
+    if(Fargs$nfix0 > 0) # we don't need to distingish b from bfix
+    {
+        Fargs$npm0 <- Fargs$npm0 + Fargs$nfix0
+        btot <- rep(NA, Fargs$npm0)
+        btot[which(Fargs$fix0 == 0)] <- Fargs$b0
+        btot[which(Fargs$fix0 == 1)] <- Fargs$bfix0
+        Fargs$b0 <- btot
+    }
+    Fargs$fix0 <- NULL
+    Fargs$nfix0 <- NULL
+    Fargs$bfix0 <- NULL
+
+    args_i <- Fargs
+
+    res <- do.call("REconddensity", c(list(ui0 = value), args_i))
+
+    return(res)
+}
