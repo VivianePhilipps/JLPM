@@ -251,7 +251,7 @@ createFargs <- function(x, data)
     res$typrisq0 <- x$typrisq
     res$nz0 <- x$nz
     res$zi0 <- x$hazardnodes
-    res$nbevt0 <- length(x$nevent)
+    res$nbevt0 <- x$N[14]
     res$idtrunc0 <- ifelse(length(x$call$survival[[2]]) == 4, 1, 0)
     res$logspecif0 <- x$logspecif
     res$ny0 <- x$N[12]
@@ -301,7 +301,7 @@ createFargs <- function(x, data)
                 next
             }
 
-            yk <- dataWithoutNA[sumnobsparY + 1:nobsparY[k],]
+            yk <- dataWithoutNA[sumnobsparY + 1:nobsparY[k], x$Name$Ynames[k]]
             uniqueTemp <- sort(unique(yk))
             permut <- order(order(yk))
 
@@ -339,6 +339,7 @@ createFargs <- function(x, data)
         res$indiceY0 <- indiceY0[order(dataWithoutNA[, x$Names$ID])]
         dataWithoutNA <- dataWithoutNA[order(dataWithoutNA[, x$Names$ID]),]
         res$Y0 <- as.vector(dataWithoutNA[, x$Names$Ynames])
+        res$nvalSPLORD0 <- nvalSPLORD
         
         id <- unique(dataWithoutNA[, x$Names$ID])
         listnmes <- tapply(data[, x$Names$Ynames, drop = FALSE], data[, x$Names$ID], function(d) apply(d, 2, function(x) length(which(!is.na(x)))))

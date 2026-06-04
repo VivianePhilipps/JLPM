@@ -568,6 +568,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         nom.timedepvar <- NULL
         form.commun <- ~-1
         form.cause <- ~-1
+        form.left <- ~-1
         survival <- ~-1
         nz <- 0
         zi <- 0
@@ -658,6 +659,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                 form.commun <- ~-1 
             }
         }
+        form.left <- formula(paste("~", paste(noms.surv, collapse = "+")))
     }
     
     nom.timedepvar <- NULL
@@ -816,7 +818,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
                      fixed.right = fixed2[-2],
                      random = random,
                      contrast = contr,
-                     surv.left = formula(paste("~", paste(noms.surv, collapse = "+"))),
+                     surv.left = form.left,
                      surv.commun = form.commun,
                      surv.cause = form.cause,
                      form.cor = form.cor)
