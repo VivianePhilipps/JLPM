@@ -1779,7 +1779,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
     }
     
     
-    names(b)[nrisqtot+nvarxevt+nasso+1:nef] <- nom.X0[-1][idg[-1]!=0]
+    if(nef > 0) names(b)[nrisqtot+nvarxevt+nasso+1:nef] <- nom.X0[-1][idg[-1]!=0]
     if(ncontr!=0) names(b)[nrisqtot+nvarxevt+nasso+nef+1:ncontr] <- paste("contrast",paste(rep(1:sum(idcontr),each=ny-1),rep(1:(ny-1),sum(idcontr)),sep=""),sep="")
     
     if(idlink[1]==0) names(b)[nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+1:ntr[1]]<- c("Linear 1","Linear 2")
