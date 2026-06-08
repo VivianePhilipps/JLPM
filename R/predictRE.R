@@ -284,10 +284,13 @@ createFargs <- function(x, data)
 
     if(!is.null(data))
     {
-        resNA <- removeNA(x$terms, data)
+        terms2 <- x$terms
+        terms2[[2]] <- NULL
+        terms2[[2]] <- terms(update(terms2[[2]], formula(paste(paste(x$Names$Ynames, collapse = "+"), "~", as.character(terms2[[2]])[2]))))
+        resNA <- removeNA(terms2, data)
         dataWithoutNA <- resNA$newdata
 
-        nobsparY <- resNA$nmes
+        nobsparY <- rep(NA, res$ny0)
         uniqueY0 <- NULL
         indiceY0 <- NULL
         nvalSPLORD <- rep(0, res$ny0)
@@ -295,35 +298,39 @@ createFargs <- function(x, data)
         nb <- 0
         for(k in 1:res$ny0)
         {
-            if((res$idlink0 != 2) & (res$idlink0 != 3))
+            nobsparY[k] <- nrow(data) - length(resNA$XlinesNA) - length(resNA$YlinesNA[[k]])
+                
+            if((res$idlink0[k] != 2) & (res$idlink0[k] != 3))
             {
                 indiceY0 <- c(indiceY0, rep(0, nobsparY[k]))
                 next
             }
 
-            yk <- dataWithoutNA[sumnobsparY + 1:nobsparY[k], x$Name$Ynames[k]]
+            yk <- dataWithoutNA[sumnobsparY + 1:nobsparY[k], "outcome"]
             uniqueTemp <- sort(unique(yk))
             permut <- order(order(yk))
 
-            if(length(as.vector(table(yk))) == length(uniqueTemp))
+            if(length(as.vector(table(yk))) == length(uniqueTemp)) # si pas de pb d'arrondi
             {
-                indice <- rep(1:length(uniqueTemp), as.vector(table(yk)))
                 if(res$idlink0[k] == 2)
                 {
+                    indice <- rep(1:length(uniqueTemp), as.vector(table(yk)))
                     indiceTemp <- nb + indice[permut]
+                    nvalSPLORD[k] <- length(uniqueTemp)
                 }
                 else
                 {
+                    indice <- rep(1:length(x$mod[[k]]), table(factor(yk, levels = x$mod[[k]])))
                     indiceTemp <- indice[permut]
+                    nvalSPLORD[k] <- length(x$mod[[k]])
                 }
                 
                 nb <- nb + length(uniqueTemp)
-                
+
                 uniqueY0 <- c(uniqueY0, uniqueTemp)
                 indiceY0 <- c(indiceY0, indiceTemp)
-                nvalSPLORD[k] <- length(uniqueTemp)
             }
-            else
+            else # pas les memes arrondis entre table et unique
             {
                 uniqueY0 <- c(uniqueY0, yk)
                 indiceY0 <- c(indiceY0, ifelse(res$idlink0[k] == 2, nb, 0) + c(1:length(yk)))
@@ -338,7 +345,7 @@ createFargs <- function(x, data)
         res$uniqueY0 <- uniqueY0
         res$indiceY0 <- indiceY0[order(dataWithoutNA[, x$Names$ID])]
         dataWithoutNA <- dataWithoutNA[order(dataWithoutNA[, x$Names$ID]),]
-        res$Y0 <- as.vector(dataWithoutNA[, x$Names$Ynames])
+        res$Y0 <- as.vector(dataWithoutNA[, "outcome"])
         res$nvalSPLORD0 <- nvalSPLORD
         
         id <- unique(dataWithoutNA[, x$Names$ID])
