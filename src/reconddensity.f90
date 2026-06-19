@@ -511,8 +511,8 @@ double precision function conddensity(ui, b)
   double precision::vrais_b 
   double precision,dimension(nea)::Y3_b 
   double precision::det_b,Y4_b,div_b 
-  double precision,dimension(nea,nea)::Ut 
-  double precision,dimension(nea*(nea+1)/2)::Ut_v 
+  double precision,dimension(nea,nea)::Ut,varB 
+  double precision,dimension(nea*(nea+1)/2)::varB_v 
   
   i = 1
   nmescur = 0
@@ -1125,32 +1125,34 @@ double precision function conddensity(ui, b)
      end if
   end if
 
-  !Ut en vecteur
+  varB = matmul(Ut, transpose(Ut))
+
+  !varB en vecteur
   jj=0
-  Ut_v=0.d0
+  varB_v=0.d0
   do j1=1,nea
      do j2=j1,nea
         jj=j1+j2*(j2-1)/2
-        Ut_v(jj)=Ut(j2,j1)
+        varB_v(jj) = varB(j2,j1)
      end do
   end do
 
   ! inversion
-  CALL dsinv(Ut_v,nea,eps,ier,det_b)
+  CALL dsinv(varB_v,nea,eps,ier,det_b)
   if (ier.eq.-1) then
      conddensity=-1.d9
-     !print*,"-1.d9 dsinv Ut_v"
+     !print*,"-1.d9 dsinv varB_v"
      goto 654
   end if
 
-  ! retransformation du vecteur Ut_v en matrice :
-  Ut=0.d0
+  ! retransformation du vecteur varB_v en matrice :
+  varB=0.d0
   do j1=1,nea
      do j2=1,nea
         if (j2.ge.j1) then
-           Ut(j1,j2)=Ut_v(j1+j2*(j2-1)/2)
+           varB(j1,j2)=varB_v(j1+j2*(j2-1)/2)
         else
-           Ut(j1,j2)=Ut_v(j2+j1*(j1-1)/2)
+           varB(j1,j2)=varB_v(j2+j1*(j1-1)/2)
         end if
      end do
   end do
@@ -1158,7 +1160,7 @@ double precision function conddensity(ui, b)
   ! calcul de la densite des EAs
   Y3_b=0.d0
   Y4_b=0.d0
-  Y3_b=matmul(Ut,ui)
+  Y3_b=matmul(varB,ui)
   Y4_b=DOT_PRODUCT(ui,Y3_b)
 
   div_b = 0.d0        
