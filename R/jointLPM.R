@@ -1232,6 +1232,7 @@ jointLPM <- function(fixed,random,subject,idiag=FALSE,cor=NULL,link="linear",int
         # /!\ si varexp dependante du tps (autre que var.time), prediction impossible
         nom.var <- c(attr(terms(fixed2[-2]), "term.labels"),attr(terms(random), "term.labels"))  # noms des covariables EF et EA
         nom.var <- nom.var[!str_detect(nom.var,var.time)] # nom.var[!(nom.var == var.time)] # noms des variables, autre que celle incluant var.time
+        nom.var <- unique(unlist(strsplit(nom.var, split = ":")))
         if(length(nom.var)>0){
           for(v in 1:length(nom.var)){ #verif: covariables (hors var.time) independantes du temps
             tmp <- unique(na.omit(data[which(data[, nom.subject] %in% IND), c(nom.subject,nom.var[v])]))  #dataframe 2 colonnes : subject et var v, en supprimant les lignes doublons
