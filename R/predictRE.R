@@ -215,7 +215,7 @@ createFargs <- function(x, data)
                    "ny0", "ns0", "nv0", "nobs0", "nmes0", "idiag0", "ncor0",
                    "nalea0", "npm0", "nfix0", "bfix0", "epsY0", "idlink0",
                    "nbzitr0", "zitr0", "uniqueY0", "indiceY0", "nvalSPLORD0",
-                   "fix0", "methInteg0", "nMC0", "dimMC0", "seqMC0", "idst0",
+                   "fix0", "nMC0", "dimMC0", "seqMC0", "idst0",
                    "nXcl0", "Xcl_Ti0", "Xcl_GK0", "Xcs_Ti0", "Xcs_GK0",
                    "nonlin0", "centerpoly0", "expectancy0")
 
@@ -274,7 +274,6 @@ createFargs <- function(x, data)
         if(as.character(x$call$methInteg) == "MCO") methInteg <- 1
         if(as.character(x$call$methInteg) == "MCA") methInteg <- 2
     }
-    res$methInteg0 <- methInteg
     
     res$nMC0 <- x$nMC
     res$idst0 <- x$sharedtype
@@ -431,12 +430,23 @@ createFargs <- function(x, data)
     }
     
     seqMC <- 0
-    dimMC <- 0
-    if(methInteg==3)
+    dimMC <- sum(res$idea0) + res$nalea0
+    if(res$ncor0 > 0) dimMC <- dimMC + maxmes # maxmes dep des donnees      
+    if((dimMC > 0) & (res$nMC0 > 0))
     {
-        dimMC <- sum(res$idea0) + res$nalea0
-        if(res$ncor0 > 0) dimMC <- dimMC + maxmes # maxmes dep des donnees
-        if((dimMC > 0) & (res$nMC0 > 0))
+        if(methInteg==1)
+        {
+            seqMC <- rnorm(res$nMC0 * dimMC)
+        }
+        
+        if(methInteg==2)
+        {
+            seq1 <- rnorm(round(res$nMC0 * dimMC / 2))
+            seq2 <- cbind(seq1, -seq2)
+            seqMC <- as.vector(t(seq2))[1:(res$nMC0 * dimMC)]
+        }
+            
+        if(methInteg==3)
         {
             sequnif <- spacefillr::generate_sobol_owen_set(res$nMC0, dimMC)
             seqMC <- apply(sequnif, 2, qnorm)

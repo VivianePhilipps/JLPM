@@ -5,7 +5,7 @@ module modirtsre
   integer,save ::ny,ns,nv,idiag,nvc,nea,ncor &
        ,maxmes,nobs,nef,ncontr,ntrtot,nalea &
        ,nySPL,ntotvalSPL,nyORD,ntotvalORD,npmtot &
-       ,nMC,methInteg,nmescur &
+       ,nMC,nmescur &
        ,nvarxevt,nbevt,logspecif,idtrunc,nvdepsurv,nrisqtot,nxevt,nasso &
        ,nassoCL,nassoCS,nassoRE,expectancy
   integer,dimension(:),allocatable,save::typrisq,nz,nprisq,nevtparx,nxcurr
@@ -55,7 +55,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
      ,typrisq0,nz0,zi0,nbevt0,idtrunc0,logspecif0 &
      ,ny0,ns0,nv0,nobs0,nmes0,idiag0,ncor0,nalea0&
      ,npm0,b0,nfix0,bfix0,epsY0,idlink0,nbzitr0,zitr0,uniqueY0,indiceY0 &
-     ,indiceYinf0,nvalSPLORD0,fix0,methInteg0,nMC0,dimMC0,seqMC0 &
+     ,indiceYinf0,nvalSPLORD0,fix0,nMC0,dimMC0,seqMC0 &
      ,idst0,nXcl0,Xcl_Ti0,Xcl_GK0,Xcs_Ti0,Xcs_GK0,nonlin0,centerpoly0 &
      ,expectancy0,loglik_res)
 
@@ -64,7 +64,7 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   IMPLICIT NONE
 
   !Declaration des variables en entree
-  integer,intent(in)::nv0,ny0,nMC0,methInteg0,dimMC0,nfix0
+  integer,intent(in)::nv0,ny0,nMC0,dimMC0,nfix0
   integer, intent(in)::ns0,nobs0,idiag0,npm0,ncor0,nalea0
   integer,intent(in)::idtrunc0,logspecif0,nbevt0,expectancy0
   double precision, dimension(ns0),intent(in)::Tentr0,Tevt0
@@ -163,7 +163,6 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
   ntotvalSPL=sum(nvalSPL(:))
   ntotvalORD=sum(nvalORD(:))
 
-  methInteg = methInteg0
   nMC = nMC0
   
   if(all(idlink.ne.2)) then
@@ -469,12 +468,8 @@ subroutine loglik(Y0,X0,Tentr0,Tevt0,Devt0,ind_survint0 &
 
   npmtot = nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+nalea+ny
   ! points qmc
-  if(methInteg.ne.3) then 
-     allocate(seqMC(1))
-  else
-     allocate(seqMC(dimMC0*nMC))
-     seqMC = seqMC0(1:dimMC0*nMC) 
-  end if
+  allocate(seqMC(dimMC0*nMC))
+  seqMC = seqMC0(1:dimMC0*nMC) 
 
 
 
@@ -633,7 +628,7 @@ double precision function vrais_i(b,npm,i)
   double precision,dimension(ny)::asim
   double precision::ai,binf,bsup
   double precision,dimension(nbevt)::risq,surv,surv0,survint
-  double precision::SX,x22,div,vrais_Y,vrais_surv,varexpsurv
+  double precision::div,vrais_Y,vrais_surv,varexpsurv
   double precision::surv0_glob,surv_glob,fevt,easurv,alnormbinf
   double precision,external::alnorm, poly, logit, sigmoid
   double precision::pred_cl_Ti 
@@ -946,93 +941,26 @@ double precision function vrais_i(b,npm,i)
 
 !!!!!!!!! MC pour EA et BM/AR !!!!!!!!!
 
-     if(methInteg.eq.1) then 
-        ! !!!!!!!!!!!!! MCO !!!!!!!!!!!!!
-
-        ! simuler les effets aleatoires
-        if(nea.gt.0) then
-           x22=0.d0
-           SX=1.d0
-           do j=1,nea
-              call bgos(SX,0,usim(j),x22,0.d0)
-              !print*,"usim=",usim(j)
-           end do
-           ui=0.d0
-           ui=matmul(Ut,usim)
-           !print*,"usim=",usim(j)," ui=",ui, " Ut=",Ut, "  nea=",nea
-        end if
-
-        ! simuler le BM ou AR
-        if(ncor.gt.0) then
-           x22=0.d0
-           SX=1.d0
-           do j=1,sum(nmes(i,:))
-              call bgos(SX,0,wsim(j),x22,0.d0)
-           end do
-           wi=0.d0
-           wi=matmul(Corr,wsim)
-        end if
-
-     else if(methInteg.eq.2) then 
-        ! !!!!!!!!!!!!! MCA !!!!!!!!!!!!!
-
-
-        if(mod(l,2).eq.0) then
-           ! si l est pair on prend l'oppose des precedents
-           ui = -ui
-           wi = -wi
-        else
-           ! sinon on simule des nouveaux
-
-           ! simuler les effets aleatoires
-           if(nea.gt.0) then
-              x22=0.d0
-              SX=1.d0
-              do j=1,nea
-                 call bgos(SX,0,usim(j),x22,0.d0)
-              end do
-              ui=0.d0
-              ui=matmul(Ut,usim)
-           end if
-
-           ! simuler le BM ou AR
-           if(ncor.gt.0) then
-              x22=0.d0
-              SX=1.d0
-              do j=1,sum(nmes(i,:))
-                 call bgos(SX,0,wsim(j),x22,0.d0)
-              end do
-              wi=0.d0
-              wi=matmul(Corr,wsim)
-           end if
-
-        end if
-
-     else 
-        ! !!!!!!!!!!!!! QMC !!!!!!!!!!!!!
-
-        ! simuler les effets aleatoires
-        if(nea.gt.0) then
-           usim=0.d0
-           do j=1,nea
-              usim(j)=seqMC(nMC*(j-1)+l)
-           end do
-           ui=0.d0
-           ui=matmul(Ut,usim)
-        end if
+ 
+     ! simuler les effets aleatoires
+     if(nea.gt.0) then
+        usim=0.d0
+        do j=1,nea
+           usim(j)=seqMC(nMC*(j-1)+l)
+        end do
+        ui=0.d0
+        ui=matmul(Ut,usim)
+     end if
         
-        ! simuler le BM ou AR
-        if(ncor.gt.0) then
-           wsim=0.d0
-           do j=1,sum(nmes(i,:))
-              wsim(j)=seqMC(nMC*(nea+j-1)+l)
-           end do
-           wi=0.d0
-           wi=matmul(Corr,wsim)
-        end if
-
-
-     end if ! fin if methInteg
+     ! simuler le BM ou AR
+     if(ncor.gt.0) then
+        wsim=0.d0
+        do j=1,sum(nmes(i,:))
+           wsim(j)=seqMC(nMC*(nea+j-1)+l)
+        end do
+        wi=0.d0
+        wi=matmul(Corr,wsim)
+     end if
 
 
      ! esperance conditionnelle
@@ -1057,24 +985,8 @@ double precision function vrais_i(b,npm,i)
            !! MC pour simuler l'EA specifique au test
            ai=0.d0
            if(nalea.gt.0) then
-              if(methInteg.eq.1) then
-                 !! MCO
-                 call bgos(SX,0,asim(yk),x22,0.d0)
-                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
-              else if(methInteg.eq.2) then
-                 !! MCA
-                 if(mod(l,2).eq.0) then
-                    ! si l est pair on prend l'oppose du precedent
-                    ai = -abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
-                 else
-                    call bgos(SX,0,asim(yk),x22,0.d0)
-                    ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
-                 end if
-              else
-                 !! QMC
-                 asim(yk) = seqMC(nMC*(nea+sum(nmes(i,:)))+l)
-                 ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
-              end if
+              asim(yk) = seqMC(nMC*(nea+sum(nmes(i,:)))+l)
+              ai = abs(b1(nrisqtot+nvarxevt+nasso+nef+ncontr+nvc+ncor+ntrtot+yk))*asim(yk)
            end if
 !if(i.lt.4) print*,"i=",i," avant do j, vrais_Y=",vrais_Y
            do j=1,nmes(i,yk)
