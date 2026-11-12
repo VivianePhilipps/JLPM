@@ -312,7 +312,10 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         ## to compute P(Y(t)=0, Y(s) = 0):
         time <- ifelse(indic_s1t2==1, s, t)
         ##cat("time=", time, "\n")
-        newdata <- data.frame(newdata, t=time, row.names=NULL)
+        newdata <- try(data.frame(newdata, t=time, row.names=NULL), silent = TRUE)
+        if(inherits(newdata, "try-error")){
+             newdata <- data.frame(newdata, t=startTime, row.names=NULL)
+        }
                 
         Xfixed <- model.matrix(fixed, data=newdata)
         Xrandom <- model.matrix(random, data=newdata)
@@ -342,6 +345,10 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
             
             b <- bsansSurv[which(fixsansSurv == 0)]
             bfix <- bsansSurv[which(fixsansSurv == 1)]
+
+            npm <- length(b)
+            nfix <- length(bfix)
+            fix <- fix[-c(1:sum(x$N[1:4]))]
         }
         
         nonlin <- x$nonlin 
