@@ -13,4 +13,4 @@ Imports: survival (>= 2.37-2), spacefillr, stringr, marqLevAlg (>= 2.0.6)
 URL: https://VivianePhilipps.github.io/JLPM/
 BugReports: https://github.com/VivianePhilipps/JLPM/issues
 LazyLoad: yes
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.1

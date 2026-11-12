@@ -1,0 +1,5 @@
+R/plotAsso.R
+.Rhistory
+src/*.o
+src/*.so
+src/*.mod

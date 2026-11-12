@@ -124,7 +124,7 @@
 #' (3) parameter(s) of association between the longitudinal 
 #' and the survival process: for \code{sharedtype='RE'}, one parameter per random effect
 #' and per cause of event is 
-#' required; for \code{sharedtype='CL'}, one parameter per cause of event is required;
+#' required; for \code{sharedtype='CL'} and \code{sharedtype='CS'}, one parameter per cause of event is required; polynomial or logistic associations require three parameters per cause of event (and per random effect for \code{sharedtype='REpoly'} or \code{sharedtype='RElogit'});
 #' (4) for all covariates  in fixed, one parameter is required. Parameters should
 #' be included in the same  order as in fixed;
 #' (5)for all covariates included with \code{contrast()} in \code{fixed}, one
@@ -296,7 +296,15 @@
 #' @param nMC integer, number of Monte Carlo simulations. Default to 1000.
 #' @param sharedtype indicator of shared random function type. \code{'RE'} indicates
 #' an association through the random effects included in the linear mixed model.
-#' \code{'CL'} defines a association through the predicted current level of the latent process.
+#' \code{'CL'} and \code{'CS'} defines a association through the predicted current level
+#' or current slope of the latent process, respectively. Both can be included sumultaneously. Non-linear associations with polynomial (degree 3) 
+#' or logistic shapes are available, so that the possible values of
+#' \code{sharedtype} are \code{'RE'}, \code{'REpoly'}, \code{'RElogit'},
+#' \code{'CL'}, \code{'CLpoly'}, \code{'CLlogit'},
+#' \code{'CS'}, \code{'CSpoly'}, \code{'CSlogit'},
+#' \code{'CL+CS'}, \code{'CLpoly+CS'}, \code{'CLlogit+CS'}, \code{'CL+CSpoly'},
+#' \code{'CL+CSlogit'}, \code{'CLpoly+CSpoly'}, \code{'CLpoly+CSlogit'},
+#' \code{'CLlogit+CSpoly'}, \code{'CLlogit+CSlogit'}.
 #' @param centerpoly for polynomial associations only, value(s) to center degree 2 and 3 polynomial terms.
 #' @param var.time name of the variable representing the measurement times.
 #' @param nproc number of cores for parallel computation.
