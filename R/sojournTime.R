@@ -573,6 +573,9 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
         {
             class(res) <- c("sojournTime", "draws")
             if(!is.null(seed)) attr(res, "seed") <- seed
+            attr(res, "items") <- names(maxState)
+            attr(res, "maxState") <- maxState
+            attr(res, "condState") <- condState
             return(res)
         }
 
@@ -587,6 +590,9 @@ sojournTime <- function(x, maxState, condState=NULL, newdata, var.time,
 
         result <- c(res_50, res_2.5, res_97.5, res_mean, res_sd, nn)
         if(!is.null(seed)) attr(result, "seed") <- seed  
+        attr(res, "items") <- names(maxState)
+        attr(res, "maxState") <- maxState
+        attr(res, "condState") <- condState
         class(result) <- c("sojournTime", "IC")
     }
 

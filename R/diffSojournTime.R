@@ -18,7 +18,9 @@ diffSojournTime <- function(x1, x2)
     if(!inherits(x1, "draws") | !inherits(x2, "draws")) stop("Please use returndraws = TRUE in the sojournTime call")
     if(!length(attr(x1, "seed")) | !length(attr(x1, "seed"))) stop("Please specify the seed in the sojournTime call")
     if(attr(x1, "seed") != attr(x2, "seed")) stop("The seeds should be the same in both sojournTime objects")
-
+    if((length(attr(x1, "items")) == 1) & (length(attr(x2, "items")) == 1) & any(attr(x1, "items") != attr(x2, "items"))) stop("the two sojournTime objects should specify the same item in maxState")
+    if(!all(attr(x1, "items") %in% attr(x2, "items")) & !all(attr(x2, "items") %in% attr(x1, "items"))) stop("the set of maxState items of one sojournTime object should be contained in the set of maxState items of the other sojournTime object")
+    
     res <- x1 - x2
     res_50 <- quantile(res, probs=0.5, na.rm=TRUE)
     res_2.5 <- quantile(res, probs=0.025, na.rm=TRUE)
