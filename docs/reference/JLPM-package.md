@@ -1,0 +1,29 @@
+# Estimation of joint latent process models
+
+Functions for the estimation of joint latent process models (JLPM).
+Continuous and ordinal outcomes are handled for the longitudinal part,
+whereas the survival part considers multiple competing events. The
+likelihood is computed using Monte-Carlo integration. Estimation is
+achieved by maximizing the log-likelihood using a robust iterative
+algorithm.
+
+## Details
+
+Please report to the JLPM-team any question or suggestion regarding the
+package via github only
+(https://github.com/VivianePhilipps/JLPM/issues).
+
+## References
+
+Saulnier, Philipps, Meissner, Rascol, Pavy-Le-Traon, Foubert-Samier,
+Proust-Lima (2022). Joint models for the longitudinal analysis of
+measurement scales in the presence of informative dropout, Methods;
+203:142-51.
+
+Philipps, Hejblum, Prague, Commenges, Proust-Lima (2021). Robust and
+efficient optimization using a Marquardt-Levenberg algorithm with R
+package marqLevAlg, The R Journal 13:2.
+
+## Author
+
+Viviane Philipps, Tiphaine Saulnier and Cecile Proust-Lima
