@@ -1,4 +1,4 @@
-# Changes in version 1.0.5:
+# Changes in version 1.0.5 (16 / 11 / 2026):
 
 * correction in predictRE
 * bugs fixed in jointLPM and sojournTime

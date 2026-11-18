@@ -84,13 +84,13 @@
 #'                      -0.299, 0.174, 0.523, 1.044, 1.064, 0.506))
 #'
 #' #### Computation of the expected lifetime sojourn time with HIER impairment
-#' up to 2 (HIER = 2)
+#' #### up to 2 (HIER = 2)
 #' #### (=int_0^150 P(HIER(t) <= 2, T > t) dt)
 #' sojournTime(M2, list(HIER = 2), newdata = data.frame(male = 0), 
 #' var.time = "age65")
 #'
 #' #### Computation of the expected residual time with maximum HIER impairment
-#'  of 2 (HIER = 2), given the impairment was 1 at time 0.5
+#' #### of 2 (HIER = 2), given the impairment was 1 at time 0.5
 #' #### (=int_0.5^150 P(HIER(t) <= 2, T > t | HIER(0.5) <= 1, T > 0.5) dt)
 #' sojournTime(M2, list(HIER = 2), condState = list(HIER = 1), startTime = 0.5,
 #' newdata = data.frame(male = 0), var.time = "age65")

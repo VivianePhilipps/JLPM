@@ -1,8 +1,8 @@
 Package: JLPM
 Type: Package
 Title: Joint Latent Process Models
-Version: 1.0.4
-Date: 2026-04-30
+Version: 1.0.5
+Date: 2026-11-16
 Authors@R: c(person("Viviane", "Philipps", role=c("aut", "cre"), email="Viviane.Philipps@u-bordeaux.fr"),
              person("Tiphaine", "Saulnier", role="aut"),
 	     person("Cecile", "Proust-Lima", role="aut"))

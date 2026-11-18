@@ -44,7 +44,6 @@ loglik(
   indiceYinf0,
   nvalSPLORD0,
   fix0,
-  methInteg0,
   nMC0,
   dimMC0,
   seqMC0,
@@ -137,8 +136,6 @@ loglik(
 \item{nvalSPLORD0}{nvalSPLORD0}
 
 \item{fix0}{fix0}
-
-\item{methInteg0}{methInteg0}
 
 \item{nMC0}{nMC0}
 
